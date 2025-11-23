@@ -2,32 +2,77 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>Find the fake</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KI Bild Annotation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
-
   <link rel="icon" type="image/png" href="icons/favicon.png">
 </head>
 <body>
 
-  <h1 class="heading" >KI Bild Annotation</h1>
-  <h3 class="width">Hilf mir zu erkennen ob dieses Bild KI-generiert ist. <br> Bitte markiere die eventuell auffälligen Bildbereiche mit deiner Maus oder dem Finger.</h3>
-  <div id="image-container">
-    <canvas id="imageCanvas"></canvas>
-    <canvas id="drawCanvas"></canvas>
+  <div id="tutorial-overlay">
+    <div class="tutorial-card">
+      <h2>Anleitung</h2>
+      <p>Hilf uns, KI-Fehler zu finden.</p>
+      
+      <div class="demo-animation">
+        <div class="demo-bg-image"></div>
+        
+        <svg class="demo-scribble" viewBox="0 0 200 150">
+          <path d="M40,50 Q60,40 80,50 T120,50 T160,50 
+                   M40,70 Q60,60 80,70 T120,70 T160,70
+                   M40,90 Q60,80 80,90 T120,90 T160,90" 
+                fill="none" stroke="rgba(255, 0, 0, 0.5)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        
+        <div class="demo-hand">👆</div>
+      </div>
+
+      <p class="sub-text">Markiere fehlerhafte Bereiche wie mit einem Textmarker.</p>
+      <button id="startBtn" class="primary-btn">Verstanden & Starten</button>
+    </div>
   </div>
-  
-  <div class="brush-settings">
-    <label for="brushWidth">Pinselbreite:</label>
-    <input type="range" id="brushWidth" min="4" max="30" value="12">
-    <span id="brushValue">12</span>
-  </div>
 
-  <h3 class="width">Kannst du die auffälligen Bereiche beschreiben?</h3>
+  <header class="main-header">
+    <img src="icons/S17_HTW_Berlin_Logo_neg_SW_RGB.png" alt="Logo" class="logo"> 
+    <h1 class="heading">KI-Bilder Annotation</h1>
+  </header>
 
-  <textarea id="comment" placeholder="Kommentar eingeben..."></textarea>
+  <main class="app-container">
+    
+    <div class="text-content">
+     
+      <p class="instruction">Markieren Sie die auffälligen Bildbereiche mit der Maus oder dem Finger.</p>
+    </div>
 
-  <button id="submitBtn">Absenden & Nächstes Bild</button>
+    <div id="image-container">
+      <canvas id="imageCanvas"></canvas>
+      <canvas id="drawCanvas"></canvas>
+    </div>
+    
+    <div class="controls">
+      <div class="brush-settings">
+        <label for="brushWidth">Pinselbreite: <span id="brushValueDisplay">12</span></label>
+        <div class="slider-wrapper">
+          <span class="small-icon">●</span>
+          <input type="range" id="brushWidth" min="4" max="40" value="12">
+          <span class="large-icon">●</span>
+        </div>
+        <span id="brushValue" style="display:none;">12</span> 
+      </div>
+
+      <div class="input-group">
+        <h3 class="sub-heading">Beschreibung (optional)</h3>
+        <textarea id="comment" placeholder="Was ist Ihnen etwas aufgefallen oder gibt es Dinge, die Sie nicht markieren können? "></textarea>
+      </div>
+
+      <button id="submitBtn" class="primary-btn">Absenden & Nächstes Bild</button>
+    </div>
+  </main>
 
   <script type="module" src="app.js"></script>
+  
 </body>
 </html>

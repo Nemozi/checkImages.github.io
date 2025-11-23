@@ -228,3 +228,38 @@ function exportMask(alpha = 0.4) {
     return merged.toDataURL("image/png");
 }
 startApp();
+const tutorialOverlay = document.getElementById("tutorial-overlay");
+const startTutorialBtn = document.getElementById("startBtn");
+
+if(startTutorialBtn) {
+    startTutorialBtn.addEventListener("click", () => {
+        tutorialOverlay.classList.add("hidden");
+    });
+}
+// 1. Overlay schließen & 2. Slider Reset Fix
+ document.addEventListener('DOMContentLoaded', () => {
+      // 1. Overlay schließen
+      const overlay = document.getElementById('tutorial-overlay');
+      const startBtn = document.getElementById('startBtn');
+      if(startBtn) {
+        startBtn.addEventListener('click', () => {
+          overlay.classList.add('hidden');
+        });
+      }
+
+      // 2. Slider Reset Fix
+      const slider = document.getElementById('brushWidth');
+      const display = document.getElementById('brushValueDisplay');
+      const hiddenSpan = document.getElementById('brushValue');
+
+      // ERZWINGEN: Wir setzen den Wert hart auf 12 beim Laden
+      slider.value = 12; 
+      display.textContent = "12";
+      hiddenSpan.textContent = "12";
+
+      // Event Listener für Änderungen
+      slider.addEventListener('input', (e) => {
+        display.textContent = e.target.value;
+        hiddenSpan.textContent = e.target.value;
+      });
+    });
