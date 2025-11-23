@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Über das Projekt - KI Bild Annotation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/png" href="icons/favicon_copy.png">
+</head>
+<body>
+
+  <header class="main-header">
+    <img src="icons/S17_HTW_Berlin_Logo_neg_SW_RGB.png" alt="Logo" class="logo"> 
+    <h1 class="heading">KI-Bilder Annotation</h1>
+  </header>
+
+  <main class="app-container">
+    <div class="controls">
+       <div class="text-content">
+         <h2 style="margin-top:0; font-size:1.2rem; text-transform:uppercase;">Über das Projekt</h2>
+         <p class="textblock" style="text-align: left; line-height: 1.6;">
+            <strong>Hinweis zur Datennutzung im Rahmen der Bachelorarbeit</strong><br><br>
+            Im Rahmen meiner Bachelorarbeit zum Thema „Gamified Disinformation Learning“ untersuche ich die visuellen Auffälligkeiten und charakteristischen Merkmale KI-generierter Bilder. Zu Forschungszwecken analysiere ich beispielhafte Bildmaterialien hinsichtlich möglicher Fehlerstellen oder visuell auffälliger Artefakte.<br><br>
+            Um diese Analyse zu unterstützen, nutze ich zusätzlich nutzergenerierte Hinweise, die über diese Website eingeholt werden.
+            Alle gewonnenen Daten werden ausschließlich für die vorliegende Bachelorarbeit verwendet und vollständig anonymisiert verarbeitet. Eine Weitergabe an Dritte erfolgt nicht. Die Datenerhebung dient ausschließlich wissenschaftlichen Zwecken.
+         </p>
+       </div>
+      
+      <!-- Der Zurück Button -->
+      <button id="backBtn" class="primary-btn" style="margin-top: 20px;">Okay, zurück zur Annotation</button>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Zurück Button Logik
+      const backBtn = document.getElementById('backBtn');
+      if(backBtn) {
+        backBtn.addEventListener('click', () => {
+            // Geht zurück zur Startseite
+            window.location.href = 'index.html'; 
+        });
+      }
+    });
+  </script>
+  
+</body>
+</html>

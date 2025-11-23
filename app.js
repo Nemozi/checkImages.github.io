@@ -246,25 +246,31 @@ if(startTutorialBtn) {
     });
 }
 // Pinselgrößenanzeige initialisieren und Tutorial-Overlay steuern
- document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
+      // 1. Overlay Logik
       const overlay = document.getElementById('tutorial-overlay');
       const startBtn = document.getElementById('startBtn');
-      if(startBtn) {
+      
+      if(startBtn && overlay) {
         startBtn.addEventListener('click', () => {
           overlay.classList.add('hidden');
         });
       }
 
+      // 2. Slider Logik (Nur ausführen, wenn Slider existiert)
       const slider = document.getElementById('brushWidth');
       const display = document.getElementById('brushValueDisplay');
       const hiddenSpan = document.getElementById('brushValue');
 
-      slider.value = 12; 
-      display.textContent = "12";
-      hiddenSpan.textContent = "12";
+      if (slider && display && hiddenSpan) {
+        // Initial setzen
+        slider.value = 12; 
+        display.textContent = "12";
+        hiddenSpan.textContent = "12";
 
-      slider.addEventListener('input', (e) => {
-        display.textContent = e.target.value;
-        hiddenSpan.textContent = e.target.value;
-      });
+        slider.addEventListener('input', (e) => {
+          display.textContent = e.target.value;
+          hiddenSpan.textContent = e.target.value;
+        });
+      }
     });

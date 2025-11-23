@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/png" href="icons/favicon_copy.png">
+
 </head>
 <body>
 
@@ -19,14 +20,12 @@
       
       <div class="demo-animation">
         <div class="demo-bg-image"></div>
-        
         <svg class="demo-scribble" viewBox="0 0 200 150">
           <path d="M40,50 Q60,40 80,50 T120,50 T160,50 
                    M40,70 Q60,60 80,70 T120,70 T160,70
                    M40,90 Q60,80 80,90 T120,90 T160,90" 
                 fill="none" stroke="rgba(255, 0, 0, 0.5)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
-        
         <div class="demo-hand">👆</div>
       </div>
 
@@ -38,12 +37,12 @@
   <header class="main-header">
     <img src="icons/S17_HTW_Berlin_Logo_neg_SW_RGB.png" alt="Logo" class="logo"> 
     <h1 class="heading">KI-Bilder Annotation</h1>
+    <a href="Info.html" class="info-link">Info</a>
   </header>
 
   <main class="app-container">
     
     <div class="text-content">
-     
       <p class="instruction">Markieren Sie die auffälligen Bildbereiche mit der Maus oder dem Finger.</p>
     </div>
 
@@ -57,7 +56,7 @@
         <label for="brushWidth">Pinselbreite: <span id="brushValueDisplay">12</span></label>
         <div class="slider-wrapper">
           <span class="small-icon">●</span>
-          <input type="range" id="brushWidth" min="4" max="40" value="12">
+          <input type="range" id="brushWidth" min="4" max="40" value="12" autocomplete="off">
           <span class="large-icon">●</span>
         </div>
         <span id="brushValue" style="display:none;">12</span> 
@@ -70,10 +69,42 @@
       </div>
 
       <button id="submitBtn" class="primary-btn">Absenden & Nächstes Bild</button>
+      
     </div>
   </main>
 
   <script type="module" src="app.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1. Overlay Logik
+      const overlay = document.getElementById('tutorial-overlay');
+      const startBtn = document.getElementById('startBtn');
+      
+      if(startBtn && overlay) {
+        startBtn.addEventListener('click', () => {
+          overlay.classList.add('hidden');
+        });
+      }
+
+      // 2. Slider Logik (Nur ausführen, wenn Slider existiert)
+      const slider = document.getElementById('brushWidth');
+      const display = document.getElementById('brushValueDisplay');
+      const hiddenSpan = document.getElementById('brushValue');
+
+      if (slider && display && hiddenSpan) {
+        // Initial setzen
+        slider.value = 12; 
+        display.textContent = "12";
+        hiddenSpan.textContent = "12";
+
+        slider.addEventListener('input', (e) => {
+          display.textContent = e.target.value;
+          hiddenSpan.textContent = e.target.value;
+        });
+      }
+    });
+  </script>
   
 </body>
 </html>

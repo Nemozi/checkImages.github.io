@@ -54,10 +54,20 @@ body::before {
   height: 40px;
   object-fit: contain;
 }
-
+.info-link {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  color: var(--text-main);
+  text-decoration: none;
+  text-decoration: underline;
+}
 @media (max-width: 600px) {
   .main-header { flex-direction: column; gap: 15px; padding-bottom: 20px; }
   .logo { position: static; transform: none; }
+  .info-link { position: static; transform: none;}
 }
 
 #tutorial-overlay {
@@ -170,20 +180,19 @@ body::before {
   text-transform: uppercase;
 }
 
-.instruction {
+.textblcok {
   color: var(--text-sub);
   margin-top: 10px;
   font-family: monospace;
   font-size: .9rem;
+  
 }
-
 .sub-heading {
   font-size: .85rem;
   font-weight: 700;
   text-transform: uppercase;
   margin-bottom: 8px;
   color: var(--text-main);
-  border-bottom: 1px solid #ccc;
   padding-bottom: 4px;
   display: inline-block;
 }
@@ -311,7 +320,7 @@ textarea:focus {
 
 .primary-btn:hover {
   background: #222;
-  transform: translate(-2px, -2px);
+  transform: translate(2px, 2px);
   box-shadow: 4px 4px 0 rgba(0,0,0,.2);
 }
 
