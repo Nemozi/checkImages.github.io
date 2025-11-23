@@ -10,6 +10,7 @@ const MAX_IMAGE_COUNT = 10000;
 
 let markedImageIds = new Set();
 let currentIndex = 1;
+let drawingHistory = [];
 
 const imageContainer = document.getElementById("image-container");
 const imageCanvas = document.getElementById("imageCanvas");
@@ -18,11 +19,11 @@ const commentField = document.getElementById("comment");
 const submitBtn = document.getElementById("submitBtn");
 const brushWidthInput = document.getElementById("brushWidth");
 const brushValueSpan = document.getElementById("brushValue");
+const undoBtn = document.getElementById("undoBtn");
 
 const imgCtx = imageCanvas.getContext("2d");
 const drawCtx = drawCanvas.getContext("2d");
 
-// Pinseleinstellungen
 let hue = 0;
 let lastX = 0;
 let lastY = 0;
@@ -36,6 +37,9 @@ brushWidthInput.addEventListener("input", (e) => {
     brushValueSpan.textContent = brushSize;
 });
 
+function saveState() {
+    drawingHistory.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
+}
 
 function draw(e) {
     if (!drawing) return;
@@ -77,9 +81,9 @@ function getCanvasCoordinates(clientX, clientY) {
     };
 }
 
-
 drawCanvas.addEventListener("pointerdown", (e) => {
     drawing = true;
+    saveState();
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
     lastX = x;
     lastY = y;
@@ -91,7 +95,15 @@ drawCanvas.addEventListener("pointerup", () => drawing = false);
 drawCanvas.addEventListener("pointercancel", () => drawing = false);
 drawCanvas.addEventListener("pointerout", () => drawing = false);
 
-// Nutze Id speichern, um anonyme Nutzer zu unterscheiden
+undoBtn.addEventListener("click", () => {
+    if (drawingHistory.length > 0) {
+        const lastState = drawingHistory.pop();
+        drawCtx.putImageData(lastState, 0, 0);
+    } else {
+        drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    }
+});
+
 function getUserId() {
     let userId = localStorage.getItem('anon_user_id');
     if (!userId) {
@@ -102,7 +114,6 @@ function getUserId() {
 }
 const ANONYMOUS_USER_ID = getUserId();
 
-// Masken und Kommentare laden
 async function getMarkedImages() {
     const { data, error } = await supabase
         .from("annotations")
@@ -127,7 +138,6 @@ function formatImageName(i) {
     return `Image_${String(i).padStart(4, "0")}.jpg`;
 }
 
-// Bild laden und anzeigen
 async function loadImage() {
     const fileName = formatImageName(currentIndex);
     const { data } = supabase.storage.from(BUCKET_IMAGES).getPublicUrl(fileName);
@@ -152,6 +162,7 @@ async function loadImage() {
 
         drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
         imgCtx.drawImage(img, 0, 0, imageCanvas.width, imageCanvas.height);
+        drawingHistory = [];
     };
 
     commentField.value = "";
@@ -162,7 +173,6 @@ function nextImage() {
     loadImage();
 }
 
-// Speichern der Annotation
 async function saveAnnotation() {
     submitBtn.disabled = true;
 
@@ -202,7 +212,6 @@ async function saveAnnotation() {
 
 submitBtn.addEventListener("click", saveAnnotation);
 
-// App Starten
 async function startApp() {
     await getMarkedImages();
 
@@ -213,7 +222,7 @@ async function startApp() {
 
     loadImage();
 }
-//Alpha erst beim speichern anwenden
+
 function exportMask(alpha = 0.4) {
     const merged = document.createElement("canvas");
     merged.width = drawCanvas.width;
@@ -236,9 +245,8 @@ if(startTutorialBtn) {
         tutorialOverlay.classList.add("hidden");
     });
 }
-// 1. Overlay schließen & 2. Slider Reset Fix
+// Pinselgrößenanzeige initialisieren und Tutorial-Overlay steuern
  document.addEventListener('DOMContentLoaded', () => {
-      // 1. Overlay schließen
       const overlay = document.getElementById('tutorial-overlay');
       const startBtn = document.getElementById('startBtn');
       if(startBtn) {
@@ -247,17 +255,14 @@ if(startTutorialBtn) {
         });
       }
 
-      // 2. Slider Reset Fix
       const slider = document.getElementById('brushWidth');
       const display = document.getElementById('brushValueDisplay');
       const hiddenSpan = document.getElementById('brushValue');
 
-      // ERZWINGEN: Wir setzen den Wert hart auf 12 beim Laden
       slider.value = 12; 
       display.textContent = "12";
       hiddenSpan.textContent = "12";
 
-      // Event Listener für Änderungen
       slider.addEventListener('input', (e) => {
         display.textContent = e.target.value;
         hiddenSpan.textContent = e.target.value;

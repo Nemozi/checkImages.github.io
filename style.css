@@ -276,7 +276,6 @@ input[type=range]::-ms-track {
   color: transparent;
 }
 
-
 textarea {
   width: 100%;
   height: 100px;
@@ -327,6 +326,29 @@ textarea:focus {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+.secondary-btn {
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--text-main);
+  border-radius: 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: background-color 0.2s;
+}
+
+.secondary-btn:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.secondary-btn:active {
+  background: rgba(0,0,0,0.1);
 }
 
 #drawCanvas { opacity: .4; }
