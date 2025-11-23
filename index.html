@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Find the fake</title>
   <link rel="stylesheet" href="style.css" />
+
   <link rel="icon" type="image/png" href="icons/favicon.png">
 </head>
 <body>
@@ -14,6 +15,13 @@
     <canvas id="imageCanvas"></canvas>
     <canvas id="drawCanvas"></canvas>
   </div>
+  
+  <div class="brush-settings">
+    <label for="brushWidth">Pinselbreite:</label>
+    <input type="range" id="brushWidth" min="4" max="30" value="12">
+    <span id="brushValue">12</span>
+  </div>
+
   <h3 class="width">Kannst du die auffälligen Bereiche beschreiben?</h3>
 
   <textarea id="comment" placeholder="Kommentar eingeben..."></textarea>

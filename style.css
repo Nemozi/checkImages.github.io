@@ -63,3 +63,6 @@ button {
     padding: 8px 16px;
   }
 }
+#drawCanvas {
+    opacity: 0.4; 
+}
