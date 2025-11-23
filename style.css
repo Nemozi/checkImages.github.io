@@ -8,16 +8,16 @@ body {
 
 #image-container {
   position: relative;
-  width: 90vw;        /* Scales with viewport width */
-  max-width: 512px;   /* Keeps max size on larger screens */
-  aspect-ratio: 1 / 1; /* Keeps it square */
+  width: 90vw;      
+  max-width: 512px;   
+  aspect-ratio: 1 / 1;
   margin-bottom: 20px;
   border: 1px solid #ccc;
 }
 
 canvas {
-  width: 100%;        /* Fill the container */
-  height: 100%;       /* Fill the container */
+  width: 100%;        
+  height: 100%;      
   position: absolute;
   top: 0;
   left: 0;
