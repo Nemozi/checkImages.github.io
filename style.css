@@ -494,6 +494,11 @@ textarea:focus {
     font-size: 1.1rem;
     margin-top: 0;
   }
+  .instruction-bold {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-top: 0.5rem;
+  }
 
   #image-container {
     grid-column: 1;
