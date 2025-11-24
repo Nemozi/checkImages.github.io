@@ -82,6 +82,9 @@ function getCanvasCoordinates(clientX, clientY) {
 }
 
 drawCanvas.addEventListener("pointerdown", (e) => {
+    // Verhindert Text-Auswahl oder Zoom-Gestures beim Start
+    e.preventDefault(); 
+    
     drawing = true;
     saveState();
     const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
@@ -90,7 +93,12 @@ drawCanvas.addEventListener("pointerdown", (e) => {
     draw(e);
 });
 
-drawCanvas.addEventListener("pointermove", draw);
+drawCanvas.addEventListener("pointermove", (e) => {
+    if (!drawing) return;
+    // WICHTIG: Verhindert, dass Android beim Malen die Seite scrollt oder refresht
+    e.preventDefault(); 
+    draw(e);
+});
 drawCanvas.addEventListener("pointerup", () => drawing = false);
 drawCanvas.addEventListener("pointercancel", () => drawing = false);
 drawCanvas.addEventListener("pointerout", () => drawing = false);
@@ -299,22 +307,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     });
-let lastWidth = window.innerWidth;
-let resizeTimeout;
-
-window.addEventListener('resize', () => {
-    // Check: Hat sich die Breite wirklich geändert?
-    if (window.innerWidth === lastWidth) {
-        // Wenn nein (nur Höhe durch Adressleiste verändert), dann NICHTS tun.
-        return;
-    }
-
-    // Neue Breite speichern
-    lastWidth = window.innerWidth;
-
-    // Debounce & Neu laden
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        loadImage(); 
-    }, 200);
-});
