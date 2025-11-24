@@ -175,6 +175,7 @@ function nextImage() {
 
 async function saveAnnotation() {
     submitBtn.disabled = true;
+    submitBtn.textContent = "Wird gespeichert..."; // Kleines UX Feedback
 
     try {
         const fileName = formatImageName(currentIndex);
@@ -186,27 +187,55 @@ async function saveAnnotation() {
         const timestamp = Date.now();
         const maskFileName = `Mask_${String(currentIndex).padStart(4,'0')}_${userCode}_${timestamp}.png`;
 
+        // Upload Maske
         const { error: uploadError } = await supabase.storage
             .from(BUCKET_MASKS)
             .upload(maskFileName, blob);
 
-        if (uploadError) return console.error(uploadError);
+        if (uploadError) {
+            console.error(uploadError);
+            alert("Fehler beim Upload der Maske.");
+            return;
+        }
 
-        await supabase.from("annotations").insert({
+        // ---------------------------------------------------------
+        // NEU: Checkboxen auslesen
+        // ---------------------------------------------------------
+        const checkboxes = document.querySelectorAll('input[name="issues"]:checked');
+        const selectedTags = Array.from(checkboxes).map(cb => cb.value);
+        // ---------------------------------------------------------
+
+        // Daten in DB schreiben
+        const { error: dbError } = await supabase.from("annotations").insert({
             image_id: fileName,
             user_id: ANONYMOUS_USER_ID,
             mask_url: maskFileName,
             comment: commentField.value,
+            tags: selectedTags, // Hier fügen wir das Array hinzu
             created_at: new Date()
         });
 
+        if (dbError) {
+            console.error("DB Error:", dbError);
+            alert("Fehler beim Speichern der Daten.");
+            return;
+        }
+
         markedImageIds.add(fileName);
+        
+        // Reset Canvas und Formular
         drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
         commentField.value = "";
+        
+        // Checkboxen zurücksetzen
+        document.querySelectorAll('input[name="issues"]').forEach(cb => cb.checked = false);
 
         nextImage();
+    } catch (err) {
+        console.error("Unexpected error:", err);
     } finally {
         submitBtn.disabled = false;
+        submitBtn.textContent = "Absenden & Nächstes Bild";
     }
 }
 
@@ -245,9 +274,7 @@ if(startTutorialBtn) {
         tutorialOverlay.classList.add("hidden");
     });
 }
-// Pinselgrößenanzeige initialisieren und Tutorial-Overlay steuern
 document.addEventListener('DOMContentLoaded', () => {
-      // 1. Overlay Logik
       const overlay = document.getElementById('tutorial-overlay');
       const startBtn = document.getElementById('startBtn');
       
@@ -257,13 +284,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
 
-      // 2. Slider Logik (Nur ausführen, wenn Slider existiert)
       const slider = document.getElementById('brushWidth');
       const display = document.getElementById('brushValueDisplay');
       const hiddenSpan = document.getElementById('brushValue');
 
       if (slider && display && hiddenSpan) {
-        // Initial setzen
         slider.value = 12; 
         display.textContent = "12";
         hiddenSpan.textContent = "12";
@@ -274,3 +299,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     });
+    let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        loadImage(); 
+    }, 200);
+});
