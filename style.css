@@ -255,25 +255,41 @@ canvas {
 input[type=range] {
   -webkit-appearance: none;
   width: 100%;
-  background: transparent;
+  background: transparent; 
 }
 
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
+  border: 0.125rem solid #000000; /* Weißer Rand */
   height: 1.25rem;
   width: 1.25rem;
-  background: var(--text-main);
+  background:var(--card-bg);
   cursor: pointer;
   margin-top: -0.5rem;
-  border-radius: 0;
-  border: 0.0625rem solid #fff;
+  border-radius: 1rem;
+  
 }
 input[type=range]::-webkit-slider-runnable-track {
   width: 100%;
   height: 0.25rem;
   background: #000;
   border: none;     
-  border-radius: 0;  
+  border-radius: none;  
+}
+/*Slider für Firefox (Warum ist Firefox so nervig??)*/
+input[type=range]::-moz-range-track {
+  width: 100%;
+  height: 0.25rem;
+  background: #000;
+  border-radius: 1rem;
+  border: none;
+}
+input[type=range]::-moz-range-thumb {
+  border: 0.125rem solid #000000;
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: 1rem;
+  background: var(--card-bg);
 }
 
 .input-group {
