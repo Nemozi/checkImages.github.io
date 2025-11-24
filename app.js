@@ -299,8 +299,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       }
     });
-    let resizeTimeout;
+let lastWidth = window.innerWidth;
+let resizeTimeout;
+
 window.addEventListener('resize', () => {
+    // Check: Hat sich die Breite wirklich geändert?
+    if (window.innerWidth === lastWidth) {
+        // Wenn nein (nur Höhe durch Adressleiste verändert), dann NICHTS tun.
+        return;
+    }
+
+    // Neue Breite speichern
+    lastWidth = window.innerWidth;
+
+    // Debounce & Neu laden
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
         loadImage(); 
