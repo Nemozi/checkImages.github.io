@@ -1,4 +1,11 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+    
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+// Panzoom importieren
+import Panzoom from 'https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/+esm'
+
+const viewportContainer = document.getElementById("image-viewport");
+const canvasWrapper = document.getElementById("canvas-wrapper");
 
 const SUPABASE_URL = "https://ehkdthdgpqpcxllpslqe.supabase.co"
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoa2R0aGRncHFwY3hsbHBzbHFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3Mzg0MzksImV4cCI6MjA3OTMxNDQzOX0.GgaILPJ9JcGWBHBG_t9gU40YIc3EEaEpuFrvQzxKzc4"
@@ -151,8 +158,9 @@ async function loadImage() {
     const { data } = supabase.storage.from(BUCKET_IMAGES).getPublicUrl(fileName);
     const url = data?.publicUrl;
 
+    // Container für "Fertig"-Nachricht anpassen
     if (!url || currentIndex > MAX_IMAGE_COUNT) {
-        imageContainer.innerHTML = "<h2>Danke! Du hast alle Bilder angesehen.</h2>";
+        viewportContainer.innerHTML = "<div style='padding:20px; text-align:center;'><h2>Danke! Du hast alle Bilder angesehen.</h2></div>";
         submitBtn.disabled = true;
         return;
     }
@@ -161,8 +169,9 @@ async function loadImage() {
     img.src = url;
 
     img.onload = () => {
-        const maxWidth = imageContainer.clientWidth;
-        const maxHeight = imageContainer.clientHeight;
+        // Größe vom Viewport holen
+        const maxWidth = viewportContainer.clientWidth;
+        const maxHeight = viewportContainer.clientHeight;
         const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
 
         imageCanvas.width = drawCanvas.width = img.width * scale;
@@ -171,6 +180,10 @@ async function loadImage() {
         drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
         imgCtx.drawImage(img, 0, 0, imageCanvas.width, imageCanvas.height);
         drawingHistory = [];
+
+        if (typeof panzoom !== 'undefined') {
+            panzoom.reset();
+        }
     };
 
     commentField.value = "";
@@ -273,6 +286,22 @@ function exportMask(alpha = 0.4) {
 
     return merged.toDataURL("image/png");
 }
+const panzoom = Panzoom(canvasWrapper, {
+    maxScale: 5,
+    minScale: 1,
+    contain: 'outside',
+    
+    // WICHTIG: Desktop Maus-Events ignorieren (damit man mit der Maus immer malen kann)
+    noMouse: true, 
+
+    // WICHTIG: Hier entscheiden wir: Malen oder Zoomen?
+    beforeTouchStart: function(e) {
+        // e.touches.length ist die Anzahl der Finger auf dem Schirm.
+        // 1 Finger = return true (Panzoom ignorieren -> Canvas darf malen)
+        // 2 Finger = return false (Panzoom aktivieren -> Zoomen/Verschieben)
+        return e.touches.length === 1;
+    }
+});
 startApp();
 const tutorialOverlay = document.getElementById("tutorial-overlay");
 const startTutorialBtn = document.getElementById("startBtn");
