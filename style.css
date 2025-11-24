@@ -6,8 +6,8 @@
   --text-sub: #444;
   --accent: #000;
   --radius: 0;
-  --border: 0.0625rem solid #1a1a1a; /* ca. 1px */
-  --shadow: 0.25rem 0.25rem 0 rgba(0,0,0,0.1); /* ca. 4px */
+  --border: 0.0625rem solid #1a1a1a; 
+  --shadow: 0.25rem 0.25rem 0 rgba(0,0,0,0.1); 
 }
 
 /* Globales Box-Sizing für ALLE Elemente */
@@ -25,7 +25,7 @@ body {
   align-items: center;
   background: linear-gradient(to bottom, var(--bg-start), var(--bg-end));
   position: relative;
-  font-size: 1rem; /* Basisgröße */
+  font-size: 1rem; 
 }
 
 body::before {
@@ -38,7 +38,7 @@ body::before {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.15'/%3E%3C/svg%3E");
 }
 
-/* ================= HEADER ================= */
+/* header */
 .main-header {
   width: 100%;
   background: var(--card-bg);
@@ -56,7 +56,7 @@ body::before {
   left: 1.25rem;
   top: 50%;
   transform: translateY(-50%);
-  height: 2.5rem; /* 40px */
+  height: 2.5rem; 
   object-fit: contain;
 }
 
@@ -71,13 +71,13 @@ body::before {
   text-decoration: underline;
 }
 
-@media (max-width: 37.5rem) { /* ca. 600px */
+@media (max-width: 37.5rem) { 
   .main-header { flex-direction: column; gap: 1rem; padding-bottom: 1.25rem; }
   .logo { position: static; transform: none; }
   .info-link { position: static; transform: none;}
 }
 
-/* ================= OVERLAY ================= */
+/* Overlay Animation*/
 #tutorial-overlay {
   position: fixed;
   inset: 0;
@@ -87,7 +87,7 @@ body::before {
   justify-content: center;
   align-items: center;
   transition: opacity .3s, visibility .3s;
-  padding: 1rem; /* Abstand zum Rand auf Mobile */
+  padding: 1rem; 
 }
 
 #tutorial-overlay.hidden {
@@ -116,8 +116,8 @@ body::before {
 
 .demo-animation {
   width: 100%;
-  max-width: 15rem; /* 240px */
-  height: 10rem; /* 160px */
+  max-width: 15rem; 
+  height: 10rem;
   margin: 2rem auto;
   position: relative;
   border: var(--border);
@@ -173,8 +173,8 @@ body::before {
 /* App layout */
 .app-container {
   width: 100%;
-  max-width: 35rem; /* ca 560px */
-  padding: 0 1.25rem 3.75rem; /* 0 20px 60px */
+  max-width: 35rem; 
+  padding: 0 1.25rem 3.75rem; 
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -183,7 +183,7 @@ body::before {
 .text-content { text-align: center; }
 
 .heading {
-  font-size: clamp(1.5rem, 4vw, 2rem); /* Skaliert zwischen 1.5 und 2rem */
+  font-size: clamp(1.5rem, 4vw, 2rem); 
   font-weight: 600;
   margin: 0;
   letter-spacing: -0.04em;
@@ -229,10 +229,10 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  overflow: hidden; /* Sicherheit, damit nichts rausragt */
+  overflow: hidden; 
 }
 
-/* ================= SLIDER ================= */
+/* Slider konfiguration*/
 .brush-settings label {
   display: flex;
   justify-content: space-between;
@@ -260,7 +260,7 @@ input[type=range] {
 
 input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  border: 0.125rem solid #000000; /* Weißer Rand */
+  border: 0.125rem solid #000000;
   height: 1.25rem;
   width: 1.25rem;
   background:var(--card-bg);
@@ -319,10 +319,10 @@ textarea:focus {
   border: 0.125rem solid #000;
 }
 
-/* ================= BUTTONS ================= */
+/* Buttons */
 .primary-btn {
   width: 100%;
-  padding: 1.125rem; /* 18px */
+  padding: 1.125rem; 
   background: var(--accent);
   color: #fff;
   border: none;
@@ -387,7 +387,7 @@ textarea:focus {
   margin-bottom: 0.625rem;
 }
 
-@media (min-width: 28rem) { /* ca. 450px */
+@media (min-width: 28rem) { 
   .checkbox-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -424,14 +424,14 @@ textarea:focus {
 /* Die Custom Box */
 .checkmark {
   position: relative;
-  flex-shrink: 0; /* Verhindert Quetschen */
-  min-width: 1.5rem; /* 24px */
+  flex-shrink: 0; 
+  min-width: 1.5rem;
   min-height: 1.5rem;
   width: 1.5rem;
   height: 1.5rem;
   
   background-color: #fff;
-  border: 0.125rem solid var(--text-main); /* 2px */
+  border: 0.125rem solid var(--text-main);
   border-radius: 0;
   transition: background-color 0.1s;
   margin-top: 0.125rem; 
@@ -456,26 +456,25 @@ textarea:focus {
 }
 
 .custom-checkbox .checkmark:after {
-  left: 0.4375rem; /* ca. 7px */
-  top: 0.1875rem;  /* ca. 3px */
-  width: 0.375rem; /* ca. 6px */
-  height: 0.75rem; /* ca. 12px */
+  left: 0.4375rem; 
+  top: 0.1875rem;  
+  width: 0.375rem; 
+  height: 0.75rem; 
   border: solid #fff;
-  border-width: 0 0.1875rem 0.1875rem 0; /* 3px */
+  border-width: 0 0.1875rem 0.1875rem 0;
   transform: rotate(45deg);
 }
 
 
-/* ================= DESKTOP LAYOUT ================= */
+/* Desktop layout*/
 
-@media (min-width: 60rem) { /* 960px */
+@media (min-width: 60rem) { 
   
   .app-container {
-    max-width: 90rem; /* 1440px max */
-    width: 95%; /* Etwas Rand lassen */
+    max-width: 90rem; 
+    width: 95%; 
     
     display: grid;
-    /* Spalte 1: Flexibel, Spalte 2: Fest ca. 25rem (400px) */
     grid-template-columns: 1fr 25rem; 
     grid-template-rows: auto 1fr; 
     gap: 2rem; 
@@ -501,7 +500,6 @@ textarea:focus {
     grid-row: 2;
     margin-bottom: 0;
     
-    /* Begrenzung auf 85% der Höhe */
     max-height: 85vh; 
     width: auto; 
     aspect-ratio: 1; 
@@ -514,7 +512,7 @@ textarea:focus {
     position: sticky;
     top: 1.25rem; 
     margin-top: 0.625rem; 
-    margin-right: 0; /* Grid kümmert sich um den Abstand */
+    margin-right: 0; 
   }
 
   .brush-settings {
@@ -525,8 +523,8 @@ textarea:focus {
 }
 .app-container-info {
   width: 100%;
-  max-width: 35rem; /* ca 560px */
-  padding: 0 1.25rem 3.75rem; /* 0 20px 60px */
+  max-width: 35rem;
+  padding: 0 1rem 3rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
