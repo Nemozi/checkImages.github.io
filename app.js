@@ -1,6 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 import Panzoom from 'https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/+esm'
 
+// --- CONFIG ---
 const SUPABASE_URL = "https://ehkdthdgpqpcxllpslqe.supabase.co"
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoa2R0aGRncHFwY3hsbHBzbHFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3Mzg0MzksImV4cCI6MjA3OTMxNDQzOX0.GgaILPJ9JcGWBHBG_t9gU40YIc3EEaEpuFrvQzxKzc4"
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -11,6 +12,7 @@ const MAX_IMAGE_COUNT = 10000;
 const MARKER_ALPHA = 0.5;
 const MARKER_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' height='24' width='24' viewBox='0 0 24 24'><path fill='%23edc531' stroke='%23000' stroke-width='1' d='M17.41 4.59c-.78-.78-2.05-.78-2.83 0L7 12.17V17h4.83l7.59-7.59c.78-.78.78-2.05 0-2.83L17.41 4.59z'/></svg>") 3 17, crosshair`;
 
+// --- DOM ELEMENTS ---
 const viewportContainer = document.getElementById("image-viewport");
 const canvasWrapper = document.getElementById("canvas-wrapper");
 const imageCanvas = document.getElementById("imageCanvas");
@@ -25,6 +27,7 @@ const tutorialOverlay = document.getElementById("tutorial-overlay");
 const startBtn = document.getElementById("startBtn");
 const backBtn = document.getElementById("backBtn");
 
+// --- GLOBAL STATE ---
 let markedImageIds = new Set();
 let currentIndex = 1;
 let drawingHistory = [];
@@ -34,32 +37,36 @@ let lastY = 0;
 let drawing = false;
 let brushSize = 12;
 
+// --- INFO PAGE LOGIC ---
 if (backBtn) {
     backBtn.addEventListener('click', () => {
         window.location.href = 'index.html'; 
     });
 }
 
+// --- MAIN APP LOGIC ---
 if (viewportContainer && drawCanvas) {
     const imgCtx = imageCanvas.getContext("2d");
     const drawCtx = drawCanvas.getContext("2d");
 
+    // ===============================================
+    // 1. PANZOOM SETUP (Die Lösung für 2 Finger)
+    // ===============================================
     const panzoom = Panzoom(canvasWrapper, {
         maxScale: 5,
         minScale: 1,
         contain: 'outside',
         cursor: 'default',
-        noMouse: true, // Desktop: Mouse paints, no panning
+        noMouse: true, // Desktop: Maus wird ignoriert (Malen erlaubt)
         
-        // Mobile Logic:
-        // Returns true = Ignore Event (Let Canvas handle it)
-        // Returns false = Handle Event (Panzoom moves image)
-        
-        // Ignore START if less than 2 fingers
+        // WICHTIG: Wir ignorieren Start-Events, wenn es weniger als 2 Finger sind.
+        // return true = Event ignorieren (Panzoom macht nichts)
+        // return false = Event akzeptieren (Panzoom startet)
         beforeTouchStart: function(e) {
             return e.touches.length < 2;
         },
-        // Ignore MOVE if less than 2 fingers
+        
+        // Das gleiche für Bewegung:
         beforeTouchMove: function(e) {
             return e.touches.length < 2;
         }
@@ -67,6 +74,7 @@ if (viewportContainer && drawCanvas) {
 
     drawCanvas.style.cursor = MARKER_CURSOR;
 
+    // UI Helpers
     if (startBtn && tutorialOverlay) {
         startBtn.addEventListener('click', () => {
             tutorialOverlay.classList.add('hidden');
@@ -85,6 +93,7 @@ if (viewportContainer && drawCanvas) {
         });
     }
 
+    // Drawing Helpers
     function saveState() {
         drawingHistory.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
     }
@@ -124,13 +133,31 @@ if (viewportContainer && drawCanvas) {
         hue = (hue + 1) % 360;
     }
 
-    drawCanvas.addEventListener("pointerdown", (e) => {
-        // If 2nd finger touches, ignore pointerdown (Panzoom will handle it)
-        if (!e.isPrimary && e.pointerType === 'touch') return;
+    // ===============================================
+    // 2. TOUCH & DRAWING LOGIC
+    // ===============================================
 
-        // 1 Finger: Prevent Default to stop scrolling, and Draw
-        e.preventDefault(); 
+    // -- START DRAWING --
+    drawCanvas.addEventListener("pointerdown", (e) => {
+        // Wenn es ein Touch-Event ist, aber NICHT der erste Finger (also der zweite),
+        // brechen wir hier ab. Panzoom kümmert sich darum.
+        if (e.pointerType === 'touch' && !e.isPrimary) return;
+
+        // WICHTIG: Verhindert Standard-Browser-Scrollen bei 1 Finger
+        // Aber lässt das Event existieren, falls wir es später brauchen.
+        // (Bei touch-action: none im CSS ist das oft redundant, aber sicher ist sicher)
+        // Wir nutzen hier KEIN stopPropagation mehr, um keine Events zu verschlucken.
+        if (e.pointerType !== 'touch') {
+            // Nur bei Maus preventDefault sofort, bei Touch warten wir kurz oder vertrauen CSS
+            e.preventDefault();
+        }
         
+        // Check: Sind schon 2 Finger da? Dann gar nicht erst malen.
+        if (navigator.maxTouchPoints > 1 && e.pointerType === 'touch') {
+             // Hier könnten wir prüfen, ob touches.length verfügbar ist, aber pointerdown
+             // liefert das nicht direkt. Wir verlassen uns auf touchstart unten.
+        }
+
         drawing = true;
         saveState();
         
@@ -140,18 +167,27 @@ if (viewportContainer && drawCanvas) {
         draw(e);
     });
 
+    // -- MOVE --
     drawCanvas.addEventListener("pointermove", (e) => {
         if (!drawing) return;
-        e.preventDefault();
+        
+        // Verhindert Scrollen beim Malen
+        e.preventDefault(); 
         draw(e);
     });
 
-    // CRITICAL: Stop drawing when 2 fingers appear
+    // -- STOP DRAWING WHEN 2 FINGERS APPEAR --
+    // Das ist der wichtigste Teil für den nahtlosen Übergang.
     drawCanvas.addEventListener('touchstart', (e) => {
         if (e.touches.length > 1) {
+            // Aha! Zwei Finger.
+            // 1. Malen sofort stoppen.
             drawing = false;
             drawCtx.beginPath();
-            // We do NOT preventDefault here, so Panzoom receives the event
+            
+            // 2. Panzoom wird das Event jetzt bekommen (da es bubbelt)
+            // und da e.touches.length >= 2 ist, wird `beforeTouchStart` (siehe oben)
+            // FALSE zurückgeben -> Panzoom startet!
         }
     }, { passive: false });
 
@@ -159,6 +195,7 @@ if (viewportContainer && drawCanvas) {
     drawCanvas.addEventListener("pointercancel", () => drawing = false);
     drawCanvas.addEventListener("pointerout", () => drawing = false);
 
+    // --- BUTTONS ---
     undoBtn.addEventListener("click", () => {
         if (drawingHistory.length > 0) {
             const lastState = drawingHistory.pop();
@@ -170,6 +207,7 @@ if (viewportContainer && drawCanvas) {
 
     submitBtn.addEventListener("click", saveAnnotation);
 
+    // --- HELPERS & DATABASE ---
     function getUserId() {
         let userId = localStorage.getItem('anon_user_id');
         if (!userId) {
@@ -239,7 +277,7 @@ if (viewportContainer && drawCanvas) {
             imgCtx.drawImage(img, 0, 0, imageCanvas.width, imageCanvas.height);
             drawingHistory = [];
             
-            // Reset Zoom
+            // Zoom zurücksetzen
             panzoom.reset();
         };
         commentField.value = "";
