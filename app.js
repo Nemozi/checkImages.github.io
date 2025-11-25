@@ -49,15 +49,15 @@ if (viewportContainer && drawCanvas) {
     const imgCtx = imageCanvas.getContext("2d");
     const drawCtx = drawCanvas.getContext("2d");
 
-    // Panzoom Setup
+    // 1. PANZOOM SETUP
+    // We remove the complex 'beforeTouch' logic because we will handle
+    // the separation in the canvas event listeners instead.
     const panzoom = Panzoom(canvasWrapper, {
         maxScale: 5,
         minScale: 1,
         contain: 'outside',
         cursor: 'default',
-        noMouse: true,
-        beforeTouchStart: (e) => e.touches.length === 1,
-        beforeTouchMove: (e) => e.touches.length < 2
+        noMouse: true, // Desktop: Mouse ignored by Panzoom (so you can paint)
     });
 
     drawCanvas.style.cursor = MARKER_CURSOR;
@@ -71,7 +71,6 @@ if (viewportContainer && drawCanvas) {
 
     // UI: Slider Logic
     if (brushWidthInput && brushDisplay && brushValueSpan) {
-        // Init values
         brushWidthInput.value = brushSize;
         brushDisplay.textContent = brushSize;
         brushValueSpan.textContent = brushSize;
@@ -123,10 +122,17 @@ if (viewportContainer && drawCanvas) {
         hue = (hue + 1) % 360;
     }
 
-    // Event Listeners: Drawing
+    // --- EVENT LISTENERS (THE FIX) ---
+
+    // 1. POINTER DOWN (Start Drawing)
     drawCanvas.addEventListener("pointerdown", (e) => {
+        // If it's a touch event and NOT the primary finger (meaning the 2nd finger), return.
         if (!e.isPrimary && e.pointerType === 'touch') return;
+
+        // FIX: Stop propagation so Panzoom doesn't feel this click
+        e.stopPropagation(); 
         e.preventDefault();
+
         drawing = true;
         saveState();
         const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
@@ -135,18 +141,35 @@ if (viewportContainer && drawCanvas) {
         draw(e);
     });
 
+    // 2. POINTER MOVE (Drawing)
     drawCanvas.addEventListener("pointermove", (e) => {
         if (!drawing) return;
+        
+        // FIX: Stop propagation here too
+        e.stopPropagation();
         e.preventDefault();
+        
         draw(e);
     });
 
+    // 3. TOUCH START (Separate logic to handle 1 vs 2 fingers)
     drawCanvas.addEventListener('touchstart', (e) => {
-        if (e.touches.length > 1) {
+        if (e.touches.length === 1) {
+            // ONE FINGER: We are drawing.
+            // Stop the event from bubbling up to the Panzoom wrapper.
+            // This prevents the image from moving with one finger.
+            e.stopPropagation();
+        } 
+        else if (e.touches.length > 1) {
+            // TWO FINGERS: We want to Zoom/Pan.
+            // Stop drawing immediately.
             drawing = false;
             drawCtx.beginPath();
+            
+            // We DO NOT stop propagation here. 
+            // We let the event bubble up so Panzoom can catch it.
         }
-    });
+    }, { passive: false });
 
     drawCanvas.addEventListener("pointerup", () => drawing = false);
     drawCanvas.addEventListener("pointercancel", () => drawing = false);
