@@ -1,12 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-    
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-// Panzoom importieren
 import Panzoom from 'https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/+esm'
 
-const viewportContainer = document.getElementById("image-viewport");
-const canvasWrapper = document.getElementById("canvas-wrapper");
-
+// --- KONFIGURATION ---
 const SUPABASE_URL = "https://ehkdthdgpqpcxllpslqe.supabase.co"
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoa2R0aGRncHFwY3hsbHBzbHFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3Mzg0MzksImV4cCI6MjA3OTMxNDQzOX0.GgaILPJ9JcGWBHBG_t9gU40YIc3EEaEpuFrvQzxKzc4"
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -15,29 +10,49 @@ const BUCKET_IMAGES = "Images"
 const BUCKET_MASKS = "Masks"
 const MAX_IMAGE_COUNT = 10000;
 
-let markedImageIds = new Set();
-let currentIndex = 1;
-let drawingHistory = [];
-
-const imageContainer = document.getElementById("image-container");
+// --- DOM ELEMENTE ---
+// WICHTIG: Hier greifen wir auf die neuen IDs aus dem HTML zu
+const viewportContainer = document.getElementById("image-viewport");
+const canvasWrapper = document.getElementById("canvas-wrapper");
 const imageCanvas = document.getElementById("imageCanvas");
 const drawCanvas = document.getElementById("drawCanvas");
+
 const commentField = document.getElementById("comment");
 const submitBtn = document.getElementById("submitBtn");
 const brushWidthInput = document.getElementById("brushWidth");
 const brushValueSpan = document.getElementById("brushValue");
 const undoBtn = document.getElementById("undoBtn");
 
+// --- VARIABLEN ---
 const imgCtx = imageCanvas.getContext("2d");
 const drawCtx = drawCanvas.getContext("2d");
 
+let markedImageIds = new Set();
+let currentIndex = 1;
+let drawingHistory = [];
 let hue = 0;
 let lastX = 0;
 let lastY = 0;
 let drawing = false;
 let brushSize = 12;
-
 const MARKER_ALPHA = 0.5;
+
+// --- PANZOOM INITIALISIERUNG (Muss vor startApp kommen) ---
+const panzoom = Panzoom(canvasWrapper, {
+    maxScale: 5,
+    minScale: 1,
+    contain: 'outside',
+    noMouse: true, // Desktop: Maus wird ignoriert (Malen erlaubt)
+    
+    // Touch Logic:
+    // 1 Finger = Malen (Panzoom ignorieren -> return true)
+    // 2 Finger = Zoomen (Panzoom aktivieren -> return false)
+    beforeTouchStart: function(e) {
+        return e.touches.length === 1; 
+    }
+});
+
+// --- EVENT LISTENER ---
 
 brushWidthInput.addEventListener("input", (e) => {
     brushSize = parseInt(e.target.value);
@@ -77,6 +92,8 @@ function draw(e) {
     if (hue >= 360) hue = 0;
 }
 
+// Wichtig: Diese Funktion funktioniert auch mit Zoom, da getBoundingClientRect
+// die aktuelle, gezoomte Größe zurückgibt.
 function getCanvasCoordinates(clientX, clientY) {
     const rect = drawCanvas.getBoundingClientRect();
     const scaleX = drawCanvas.width / rect.width;
@@ -88,8 +105,10 @@ function getCanvasCoordinates(clientX, clientY) {
     };
 }
 
+// --- MALEN EVENTS ---
+
 drawCanvas.addEventListener("pointerdown", (e) => {
-    // Verhindert Text-Auswahl oder Zoom-Gestures beim Start
+    // Verhindert Text-Auswahl
     e.preventDefault(); 
     
     drawing = true;
@@ -102,14 +121,23 @@ drawCanvas.addEventListener("pointerdown", (e) => {
 
 drawCanvas.addEventListener("pointermove", (e) => {
     if (!drawing) return;
-    // WICHTIG: Verhindert, dass Android beim Malen die Seite scrollt oder refresht
+    // WICHTIG: Verhindert Scrollen auf Android
     e.preventDefault(); 
     draw(e);
 });
+
+// Sicherheitshalber Zeichnen stoppen, wenn 2 Finger kommen (Zoom Start)
+drawCanvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length > 1) {
+        drawing = false;
+    }
+});
+
 drawCanvas.addEventListener("pointerup", () => drawing = false);
 drawCanvas.addEventListener("pointercancel", () => drawing = false);
 drawCanvas.addEventListener("pointerout", () => drawing = false);
 
+// --- UNDO ---
 undoBtn.addEventListener("click", () => {
     if (drawingHistory.length > 0) {
         const lastState = drawingHistory.pop();
@@ -118,6 +146,8 @@ undoBtn.addEventListener("click", () => {
         drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
     }
 });
+
+// --- USER & DATENBANK ---
 
 function getUserId() {
     let userId = localStorage.getItem('anon_user_id');
@@ -153,12 +183,13 @@ function formatImageName(i) {
     return `Image_${String(i).padStart(4, "0")}.jpg`;
 }
 
+// --- BILD LADEN LOGIK ---
+
 async function loadImage() {
     const fileName = formatImageName(currentIndex);
     const { data } = supabase.storage.from(BUCKET_IMAGES).getPublicUrl(fileName);
     const url = data?.publicUrl;
 
-    // Container für "Fertig"-Nachricht anpassen
     if (!url || currentIndex > MAX_IMAGE_COUNT) {
         viewportContainer.innerHTML = "<div style='padding:20px; text-align:center;'><h2>Danke! Du hast alle Bilder angesehen.</h2></div>";
         submitBtn.disabled = true;
@@ -169,7 +200,8 @@ async function loadImage() {
     img.src = url;
 
     img.onload = () => {
-        // Größe vom Viewport holen
+        // Hier war der Fehler: imageContainer existiert nicht mehr.
+        // Wir nehmen jetzt viewportContainer für die Breite.
         const maxWidth = viewportContainer.clientWidth;
         const maxHeight = viewportContainer.clientHeight;
         const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
@@ -181,9 +213,8 @@ async function loadImage() {
         imgCtx.drawImage(img, 0, 0, imageCanvas.width, imageCanvas.height);
         drawingHistory = [];
 
-        if (typeof panzoom !== 'undefined') {
-            panzoom.reset();
-        }
+        // Zoom Reset bei neuem Bild
+        panzoom.reset();
     };
 
     commentField.value = "";
@@ -196,7 +227,7 @@ function nextImage() {
 
 async function saveAnnotation() {
     submitBtn.disabled = true;
-    submitBtn.textContent = "Wird gespeichert..."; // Kleines UX Feedback
+    submitBtn.textContent = "Wird gespeichert..."; 
 
     try {
         const fileName = formatImageName(currentIndex);
@@ -208,7 +239,6 @@ async function saveAnnotation() {
         const timestamp = Date.now();
         const maskFileName = `Mask_${String(currentIndex).padStart(4,'0')}_${userCode}_${timestamp}.png`;
 
-        // Upload Maske
         const { error: uploadError } = await supabase.storage
             .from(BUCKET_MASKS)
             .upload(maskFileName, blob);
@@ -219,20 +249,15 @@ async function saveAnnotation() {
             return;
         }
 
-        // ---------------------------------------------------------
-        // NEU: Checkboxen auslesen
-        // ---------------------------------------------------------
         const checkboxes = document.querySelectorAll('input[name="issues"]:checked');
         const selectedTags = Array.from(checkboxes).map(cb => cb.value);
-        // ---------------------------------------------------------
 
-        // Daten in DB schreiben
         const { error: dbError } = await supabase.from("annotations").insert({
             image_id: fileName,
             user_id: ANONYMOUS_USER_ID,
             mask_url: maskFileName,
             comment: commentField.value,
-            tags: selectedTags, // Hier fügen wir das Array hinzu
+            tags: selectedTags,
             created_at: new Date()
         });
 
@@ -244,11 +269,9 @@ async function saveAnnotation() {
 
         markedImageIds.add(fileName);
         
-        // Reset Canvas und Formular
         drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
         commentField.value = "";
         
-        // Checkboxen zurücksetzen
         document.querySelectorAll('input[name="issues"]').forEach(cb => cb.checked = false);
 
         nextImage();
@@ -261,17 +284,6 @@ async function saveAnnotation() {
 }
 
 submitBtn.addEventListener("click", saveAnnotation);
-
-async function startApp() {
-    await getMarkedImages();
-
-    const randomStart = Math.floor(Math.random() * 100) + 1;
-    currentIndex = findNextUnmarkedIndex(randomStart);
-    if (currentIndex > MAX_IMAGE_COUNT)
-        currentIndex = findNextUnmarkedIndex(1, randomStart - 1);
-
-    loadImage();
-}
 
 function exportMask(alpha = 0.4) {
     const merged = document.createElement("canvas");
@@ -286,53 +298,17 @@ function exportMask(alpha = 0.4) {
 
     return merged.toDataURL("image/png");
 }
-const panzoom = Panzoom(canvasWrapper, {
-    maxScale: 5,
-    minScale: 1,
-    contain: 'outside',
-    
-    // WICHTIG: Desktop Maus-Events ignorieren (damit man mit der Maus immer malen kann)
-    noMouse: true, 
 
-    // WICHTIG: Hier entscheiden wir: Malen oder Zoomen?
-    beforeTouchStart: function(e) {
-        // e.touches.length ist die Anzahl der Finger auf dem Schirm.
-        // 1 Finger = return true (Panzoom ignorieren -> Canvas darf malen)
-        // 2 Finger = return false (Panzoom aktivieren -> Zoomen/Verschieben)
-        return e.touches.length === 1;
-    }
-});
-startApp();
-const tutorialOverlay = document.getElementById("tutorial-overlay");
-const startTutorialBtn = document.getElementById("startBtn");
+async function startApp() {
+    await getMarkedImages();
 
-if(startTutorialBtn) {
-    startTutorialBtn.addEventListener("click", () => {
-        tutorialOverlay.classList.add("hidden");
-    });
+    const randomStart = Math.floor(Math.random() * 100) + 1;
+    currentIndex = findNextUnmarkedIndex(randomStart);
+    if (currentIndex > MAX_IMAGE_COUNT)
+        currentIndex = findNextUnmarkedIndex(1, randomStart - 1);
+
+    loadImage();
 }
-document.addEventListener('DOMContentLoaded', () => {
-      const overlay = document.getElementById('tutorial-overlay');
-      const startBtn = document.getElementById('startBtn');
-      
-      if(startBtn && overlay) {
-        startBtn.addEventListener('click', () => {
-          overlay.classList.add('hidden');
-        });
-      }
 
-      const slider = document.getElementById('brushWidth');
-      const display = document.getElementById('brushValueDisplay');
-      const hiddenSpan = document.getElementById('brushValue');
-
-      if (slider && display && hiddenSpan) {
-        slider.value = 12; 
-        display.textContent = "12";
-        hiddenSpan.textContent = "12";
-
-        slider.addEventListener('input', (e) => {
-          display.textContent = e.target.value;
-          hiddenSpan.textContent = e.target.value;
-        });
-      }
-    });
+// App starten
+startApp();
