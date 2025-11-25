@@ -49,18 +49,33 @@ if (viewportContainer && drawCanvas) {
     const imgCtx = imageCanvas.getContext("2d");
     const drawCtx = drawCanvas.getContext("2d");
 
-    // 1. PANZOOM SETUP
-    // We remove the complex 'beforeTouch' logic because we will handle
-    // the separation in the canvas event listeners instead.
+    // 1. PANZOOM SETUP (The Fix)
     const panzoom = Panzoom(canvasWrapper, {
         maxScale: 5,
         minScale: 1,
         contain: 'outside',
         cursor: 'default',
-        noMouse: true, // Desktop: Mouse ignored by Panzoom (so you can paint)
+        noMouse: true, // Desktop: Mouse paints, no panning
+        
+        // Start with panning disabled. We enable it dynamically below.
+        disablePan: true 
     });
 
     drawCanvas.style.cursor = MARKER_CURSOR;
+
+    // 2. SMART PANNING TOGGLE (The "Google Maps" Logic)
+    // We listen on the wrapper. 
+    // If 1 finger -> We ensure Pan is DISABLED.
+    // If 2 fingers -> We ensure Pan is ENABLED.
+    canvasWrapper.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 1) {
+            // Two fingers? Enable Panning & Zooming
+            panzoom.setOptions({ disablePan: false, disableZoom: false });
+        } else {
+            // One finger? Disable Panning (so you can draw)
+            panzoom.setOptions({ disablePan: true });
+        }
+    }, { passive: false }); // Passive: false allows us to control the event flow if needed
 
     // UI: Tutorial Overlay
     if (startBtn && tutorialOverlay) {
@@ -87,8 +102,10 @@ if (viewportContainer && drawCanvas) {
         drawingHistory.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
     }
 
+    // Helper to get coordinates relative to the actual canvas pixels
     function getCanvasCoordinates(clientX, clientY) {
         const rect = drawCanvas.getBoundingClientRect();
+        // Calculate scale in case the canvas is zoomed
         const scaleX = drawCanvas.width / rect.width;
         const scaleY = drawCanvas.height / rect.height;
         return {
@@ -122,52 +139,39 @@ if (viewportContainer && drawCanvas) {
         hue = (hue + 1) % 360;
     }
 
-    // --- EVENT LISTENERS (THE FIX) ---
+    // --- DRAWING EVENT LISTENERS ---
 
-    // 1. POINTER DOWN (Start Drawing)
+    // START DRAWING
     drawCanvas.addEventListener("pointerdown", (e) => {
-        // If it's a touch event and NOT the primary finger (meaning the 2nd finger), return.
+        // If it's a touch event and not the primary finger, ignore (it's the zoom finger)
         if (!e.isPrimary && e.pointerType === 'touch') return;
 
-        // FIX: Stop propagation so Panzoom doesn't feel this click
-        e.stopPropagation(); 
-        e.preventDefault();
-
+        // Prevent default browser behavior (scrolling)
+        e.preventDefault(); 
+        
         drawing = true;
         saveState();
+        
         const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
         lastX = x;
         lastY = y;
         draw(e);
     });
 
-    // 2. POINTER MOVE (Drawing)
+    // DRAWING MOVE
     drawCanvas.addEventListener("pointermove", (e) => {
         if (!drawing) return;
-        
-        // FIX: Stop propagation here too
-        e.stopPropagation();
         e.preventDefault();
-        
         draw(e);
     });
 
-    // 3. TOUCH START (Separate logic to handle 1 vs 2 fingers)
+    // SAFETY CHECK: STOP DRAWING ON 2 FINGERS
     drawCanvas.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-            // ONE FINGER: We are drawing.
-            // Stop the event from bubbling up to the Panzoom wrapper.
-            // This prevents the image from moving with one finger.
-            e.stopPropagation();
-        } 
-        else if (e.touches.length > 1) {
-            // TWO FINGERS: We want to Zoom/Pan.
-            // Stop drawing immediately.
+        if (e.touches.length > 1) {
+            // As soon as a second finger hits the screen, stop drawing immediately
             drawing = false;
             drawCtx.beginPath();
-            
-            // We DO NOT stop propagation here. 
-            // We let the event bubble up so Panzoom can catch it.
+            // We DO NOT stop propagation here, so Panzoom can pick up the gesture
         }
     }, { passive: false });
 
