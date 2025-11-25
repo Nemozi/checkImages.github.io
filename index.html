@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/png" href="icons/favicon_copy.png">
+  <script type="module" src="app.js"></script>
 
 </head>
 <body>
@@ -132,38 +133,5 @@
     </div>
   </main>
 
-  <script type="module" src="app.js"></script>
-  
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // 1. Overlay Logik
-      const overlay = document.getElementById('tutorial-overlay');
-      const startBtn = document.getElementById('startBtn');
-      
-      if(startBtn && overlay) {
-        startBtn.addEventListener('click', () => {
-          overlay.classList.add('hidden');
-        });
-      }
-
-      // 2. Slider Logik (Nur ausführen, wenn Slider existiert)
-      const slider = document.getElementById('brushWidth');
-      const display = document.getElementById('brushValueDisplay');
-      const hiddenSpan = document.getElementById('brushValue');
-
-      if (slider && display && hiddenSpan) {
-        // Initial setzen
-        slider.value = 12; 
-        display.textContent = "12";
-        hiddenSpan.textContent = "12";
-
-        slider.addEventListener('input', (e) => {
-          display.textContent = e.target.value;
-          hiddenSpan.textContent = e.target.value;
-        });
-      }
-    });
-  </script>
-  
 </body>
 </html>

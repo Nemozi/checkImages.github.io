@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/png" href="icons/favicon_copy.png">
+  <script type="module" src="app.js"></script>
+
 </head>
 <body>
 
@@ -33,19 +35,5 @@
       <button id="backBtn" class="primary-btn" style="margin-top: 20px;">Okay, zurück zur Annotation</button>
     </div>
   </main>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // Zurück Button Logik
-      const backBtn = document.getElementById('backBtn');
-      if(backBtn) {
-        backBtn.addEventListener('click', () => {
-            // Geht zurück zur Startseite
-            window.location.href = 'index.html'; 
-        });
-      }
-    });
-  </script>
-  
 </body>
 </html>
