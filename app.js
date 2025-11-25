@@ -1,7 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 import Panzoom from 'https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/+esm'
 
-// --- CONFIG ---
 const SUPABASE_URL = "https://ehkdthdgpqpcxllpslqe.supabase.co"
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoa2R0aGRncHFwY3hsbHBzbHFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3Mzg0MzksImV4cCI6MjA3OTMxNDQzOX0.GgaILPJ9JcGWBHBG_t9gU40YIc3EEaEpuFrvQzxKzc4"
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -12,7 +11,6 @@ const MAX_IMAGE_COUNT = 10000;
 const MARKER_ALPHA = 0.5;
 const MARKER_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' height='24' width='24' viewBox='0 0 24 24'><path fill='%23edc531' stroke='%23000' stroke-width='1' d='M17.41 4.59c-.78-.78-2.05-.78-2.83 0L7 12.17V17h4.83l7.59-7.59c.78-.78.78-2.05 0-2.83L17.41 4.59z'/></svg>") 3 17, crosshair`;
 
-// --- DOM ELEMENTS ---
 const viewportContainer = document.getElementById("image-viewport");
 const canvasWrapper = document.getElementById("canvas-wrapper");
 const imageCanvas = document.getElementById("imageCanvas");
@@ -27,7 +25,6 @@ const tutorialOverlay = document.getElementById("tutorial-overlay");
 const startBtn = document.getElementById("startBtn");
 const backBtn = document.getElementById("backBtn");
 
-// --- GLOBAL STATE ---
 let markedImageIds = new Set();
 let currentIndex = 1;
 let drawingHistory = [];
@@ -37,19 +34,16 @@ let lastY = 0;
 let drawing = false;
 let brushSize = 12;
 
-// --- INFO PAGE LOGIC ---
 if (backBtn) {
     backBtn.addEventListener('click', () => {
         window.location.href = 'index.html'; 
     });
 }
 
-// --- MAIN APP LOGIC ---
 if (viewportContainer && drawCanvas) {
     const imgCtx = imageCanvas.getContext("2d");
     const drawCtx = drawCanvas.getContext("2d");
 
-    // 1. PANZOOM SETUP (The Fix)
     const panzoom = Panzoom(canvasWrapper, {
         maxScale: 5,
         minScale: 1,
@@ -57,34 +51,28 @@ if (viewportContainer && drawCanvas) {
         cursor: 'default',
         noMouse: true, // Desktop: Mouse paints, no panning
         
-        // Start with panning disabled. We enable it dynamically below.
-        disablePan: true 
+        // Mobile Logic:
+        // Returns true = Ignore Event (Let Canvas handle it)
+        // Returns false = Handle Event (Panzoom moves image)
+        
+        // Ignore START if less than 2 fingers
+        beforeTouchStart: function(e) {
+            return e.touches.length < 2;
+        },
+        // Ignore MOVE if less than 2 fingers
+        beforeTouchMove: function(e) {
+            return e.touches.length < 2;
+        }
     });
 
     drawCanvas.style.cursor = MARKER_CURSOR;
 
-    // 2. SMART PANNING TOGGLE (The "Google Maps" Logic)
-    // We listen on the wrapper. 
-    // If 1 finger -> We ensure Pan is DISABLED.
-    // If 2 fingers -> We ensure Pan is ENABLED.
-    canvasWrapper.addEventListener('touchstart', (e) => {
-        if (e.touches.length > 1) {
-            // Two fingers? Enable Panning & Zooming
-            panzoom.setOptions({ disablePan: false, disableZoom: false });
-        } else {
-            // One finger? Disable Panning (so you can draw)
-            panzoom.setOptions({ disablePan: true });
-        }
-    }, { passive: false }); // Passive: false allows us to control the event flow if needed
-
-    // UI: Tutorial Overlay
     if (startBtn && tutorialOverlay) {
         startBtn.addEventListener('click', () => {
             tutorialOverlay.classList.add('hidden');
         });
     }
 
-    // UI: Slider Logic
     if (brushWidthInput && brushDisplay && brushValueSpan) {
         brushWidthInput.value = brushSize;
         brushDisplay.textContent = brushSize;
@@ -97,15 +85,12 @@ if (viewportContainer && drawCanvas) {
         });
     }
 
-    // Drawing Logic
     function saveState() {
         drawingHistory.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
     }
 
-    // Helper to get coordinates relative to the actual canvas pixels
     function getCanvasCoordinates(clientX, clientY) {
         const rect = drawCanvas.getBoundingClientRect();
-        // Calculate scale in case the canvas is zoomed
         const scaleX = drawCanvas.width / rect.width;
         const scaleY = drawCanvas.height / rect.height;
         return {
@@ -139,14 +124,11 @@ if (viewportContainer && drawCanvas) {
         hue = (hue + 1) % 360;
     }
 
-    // --- DRAWING EVENT LISTENERS ---
-
-    // START DRAWING
     drawCanvas.addEventListener("pointerdown", (e) => {
-        // If it's a touch event and not the primary finger, ignore (it's the zoom finger)
+        // If 2nd finger touches, ignore pointerdown (Panzoom will handle it)
         if (!e.isPrimary && e.pointerType === 'touch') return;
 
-        // Prevent default browser behavior (scrolling)
+        // 1 Finger: Prevent Default to stop scrolling, and Draw
         e.preventDefault(); 
         
         drawing = true;
@@ -158,20 +140,18 @@ if (viewportContainer && drawCanvas) {
         draw(e);
     });
 
-    // DRAWING MOVE
     drawCanvas.addEventListener("pointermove", (e) => {
         if (!drawing) return;
         e.preventDefault();
         draw(e);
     });
 
-    // SAFETY CHECK: STOP DRAWING ON 2 FINGERS
+    // CRITICAL: Stop drawing when 2 fingers appear
     drawCanvas.addEventListener('touchstart', (e) => {
         if (e.touches.length > 1) {
-            // As soon as a second finger hits the screen, stop drawing immediately
             drawing = false;
             drawCtx.beginPath();
-            // We DO NOT stop propagation here, so Panzoom can pick up the gesture
+            // We do NOT preventDefault here, so Panzoom receives the event
         }
     }, { passive: false });
 
@@ -179,7 +159,6 @@ if (viewportContainer && drawCanvas) {
     drawCanvas.addEventListener("pointercancel", () => drawing = false);
     drawCanvas.addEventListener("pointerout", () => drawing = false);
 
-    // Event Listeners: Buttons
     undoBtn.addEventListener("click", () => {
         if (drawingHistory.length > 0) {
             const lastState = drawingHistory.pop();
@@ -191,7 +170,6 @@ if (viewportContainer && drawCanvas) {
 
     submitBtn.addEventListener("click", saveAnnotation);
 
-    // Helper Functions
     function getUserId() {
         let userId = localStorage.getItem('anon_user_id');
         if (!userId) {
@@ -227,7 +205,6 @@ if (viewportContainer && drawCanvas) {
         return top + 1;
     }
 
-    // Async Functions
     async function getMarkedImages() {
         const { data, error } = await supabase
             .from("annotations")
@@ -261,6 +238,8 @@ if (viewportContainer && drawCanvas) {
             drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
             imgCtx.drawImage(img, 0, 0, imageCanvas.width, imageCanvas.height);
             drawingHistory = [];
+            
+            // Reset Zoom
             panzoom.reset();
         };
         commentField.value = "";
@@ -310,7 +289,6 @@ if (viewportContainer && drawCanvas) {
         }
     }
 
-    // Start App
     async function startApp() {
         await getMarkedImages();
         const randomStart = Math.floor(Math.random() * 100) + 1;
