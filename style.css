@@ -657,3 +657,7 @@ flex-direction: column;
 gap: 0.5rem;
 }
 }
+#drawCanvas{
+    cursor: crosshair;
+    opacity: 0.5;
+}
