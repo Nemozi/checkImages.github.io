@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>KI Bild Annotation</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/png" href="icons/favicon_copy.png">
   <script type="module" src="app.js"></script>
-
 </head>
 <body>
 
@@ -45,9 +44,10 @@
     
     <div class="text-content">
       <p class="instruction">Markieren Sie die auffälligen Bildbereiche mit der Maus oder dem Finger.</p>
-      <p class="instruction-bold"> Bitte nicht umkreisen, sondern mit dem Pinsel markieren.</p>
+      <p class="instruction-bold">Bitte nicht umkreisen, sondern flächig markieren.</p>
     </div>
-    <div id="image-viewport" class="viewport-container">
+
+    <div id="scroll-container" class="scroll-viewport">
       <div id="canvas-wrapper">
           <canvas id="imageCanvas"></canvas>
           <canvas id="drawCanvas"></canvas>
@@ -55,6 +55,24 @@
     </div>
     
     <div class="controls">
+      
+      <!-- Zoom Slider -->
+      <div class="brush-settings" style="border-bottom: 1px solid #000; padding-bottom: 20px; margin-bottom: 20px;">
+        <label for="zoomLevel">Zoom: <span id="zoomValueDisplay">100%</span></label>
+        <div class="slider-wrapper">
+          <span class="small-icon">🔍-</span>
+          <input type="range" id="zoomLevel" min="100" max="400" value="100" step="10" autocomplete="off">
+          <span class="large-icon">+🔍</span>
+          
+        </div>
+        <p>Klicken um: </p>
+        <button id="modeBtn" class="primary-btn" style="margin-bottom: 20px; background: #000; border: 1px solid #fff;">
+        Bild zu verschieben
+        </button>
+
+      </div>
+
+      <!-- Pinsel Slider -->
       <div class="brush-settings">
         <label for="brushWidth">Pinselbreite: <span id="brushValueDisplay">12</span></label>
         <div class="slider-wrapper">
@@ -63,94 +81,47 @@
           <span class="large-icon">●</span>
         </div>
         <span id="brushValue" style="display:none;">12</span> 
-        <button id="undoBtn" class="secondary-btn">Letzte Markierung löschen ↺</button>
+        <p>Klicken um:</p>
+        <button id="undoBtn" class="secondary-btn">Letzten Strich zu löschen</button>
       </div>
+
       <div class="input-group">
         <h3 class="sub-heading">Auffälligkeiten (Mehrfachauswahl)</h3>
         <div class="checkbox-grid">
-          
-          <label class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Hauttexturen">
-            <span class="checkmark"></span>
-            Hauttexturen
-          </label>
-
-          <label  class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Schatten">
-            <span class="checkmark"></span>
-            Schatten
-          </label>
-
-          <label class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Schmuck/Accessoires">
-            <span class="checkmark"></span>
-            Schmuck/Accessoires
-          </label>
-
-          <label class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Falten">
-            <span class="checkmark"></span>
-            Falten
-          </label>
-
-          <label class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Reflektionen">
-            <span class="checkmark"></span>
-            Reflektionen
-          </label>
-
-          <label class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Fehlende/zu viele Körperglieder">
-            <span class="checkmark"></span>
-            Fehlende/zu viele Körperglieder
-          </label>
-
-          <label class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Bewegungen/Haltungen">
-            <span class="checkmark"></span>
-            Bewegungen/Haltungen
-          </label>
-          <label class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Bewegungen/Haltungen">
-            <span class="checkmark"></span>
-            Haare
-          </label>
-          <label class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Hintergrund">
-            <span class="checkmark"></span>
-            Hintergrund
-          </label>
-          <label class="custom-checkbox">
-            <input type="checkbox" name="issues" value="Hintergrund">
-            <span class="checkmark"></span>
-            Farben
-          </label>
-
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Hauttexturen"><span class="checkmark"></span>Hauttexturen</label>
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Schatten"><span class="checkmark"></span>Schatten</label>
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Schmuck/Accessoires"><span class="checkmark"></span>Schmuck/Accessoires</label>
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Falten"><span class="checkmark"></span>Falten</label>
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Reflektionen"><span class="checkmark"></span>Reflektionen</label>
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Körperglieder"><span class="checkmark"></span>Fehlende/zu viele Körperglieder</label>
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Haltung"><span class="checkmark"></span>Bewegungen/Haltungen</label>
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Haare"><span class="checkmark"></span>Haare</label>
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Hintergrund"><span class="checkmark"></span>Hintergrund</label>
+          <label class="custom-checkbox"><input type="checkbox" name="issues" value="Farben"><span class="checkmark"></span>Farben</label>
         </div>
-        <div class="input-group">
-  <h3 class="sub-heading">Wie überzeugend finden Sie das Bild? (1-10)</h3>
-  <div class="rating-container">
-    <button class="rating-btn" data-value="1">1</button>
-    <button class="rating-btn" data-value="2">2</button>
-    <button class="rating-btn" data-value="3">3</button>
-    <button class="rating-btn" data-value="4">4</button>
-    <button class="rating-btn" data-value="5">5</button>
-    <button class="rating-btn" data-value="6">6</button>
-    <button class="rating-btn" data-value="7">7</button>
-    <button class="rating-btn" data-value="8">8</button>
-    <button class="rating-btn" data-value="9">9</button>
-    <button class="rating-btn" data-value="10">10</button>
-  </div>
-  <p class="rating-labels">
-    <span>1 = Fake</span>
-    <span>10 = Realistisch</span>
-  </p>
-</div>
-
       </div>
+
+      <!-- Rating -->
+      <div class="input-group">
+        <h3 class="sub-heading">Wie überzeugend finden Sie das Bild? (1-10)</h3>
+        <div class="rating-container">
+          <button class="rating-btn" data-value="1">1</button>
+          <button class="rating-btn" data-value="2">2</button>
+          <button class="rating-btn" data-value="3">3</button>
+          <button class="rating-btn" data-value="4">4</button>
+          <button class="rating-btn" data-value="5">5</button>
+          <button class="rating-btn" data-value="6">6</button>
+          <button class="rating-btn" data-value="7">7</button>
+          <button class="rating-btn" data-value="8">8</button>
+          <button class="rating-btn" data-value="9">9</button>
+          <button class="rating-btn" data-value="10">10</button>
+        </div>
+        <p class="rating-labels"><span>1 = Fake</span><span>10 = Realistisch</span></p>
+      </div>
+
       <div class="input-group">
         <h3 class="sub-heading">Beschreibung (optional)</h3>
-        <textarea id="comment" placeholder="Was ist Ihnen aufgefallen oder gibt es Dinge, die Sie nicht markieren können? "></textarea>
+        <textarea id="comment" placeholder="Was ist Ihnen aufgefallen oder gibt es Dinge, die Sie nicht markieren können?"></textarea>
       </div>
 
       <button id="submitBtn" class="primary-btn">Absenden & Nächstes Bild</button>

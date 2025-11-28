@@ -1,5 +1,4 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-import Panzoom from 'https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/+esm'
 
 // --- Config ---
 const SUPABASE_URL = "https://ehkdthdgpqpcxllpslqe.supabase.co"
@@ -13,62 +12,96 @@ const MARKER_ALPHA = 0.5;
 const MARKER_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' height='24' width='24' viewBox='0 0 24 24'><path fill='%23edc531' stroke='%23000' stroke-width='1' d='M17.41 4.59c-.78-.78-2.05-.78-2.83 0L7 12.17V17h4.83l7.59-7.59c.78-.78.78-2.05 0-2.83L17.41 4.59z'/></svg>") 3 17, crosshair`;
 
 // --- DOM Elements ---
-const viewportContainer = document.getElementById("image-viewport");
+const scrollContainer = document.getElementById("scroll-container");
 const canvasWrapper = document.getElementById("canvas-wrapper");
 const imageCanvas = document.getElementById("imageCanvas");
 const drawCanvas = document.getElementById("drawCanvas");
 const commentField = document.getElementById("comment");
 const submitBtn = document.getElementById("submitBtn");
+
+// Controls
 const brushWidthInput = document.getElementById("brushWidth");
 const brushValueSpan = document.getElementById("brushValue");
 const brushDisplay = document.getElementById("brushValueDisplay");
+const zoomInput = document.getElementById("zoomLevel");
+const zoomDisplay = document.getElementById("zoomValueDisplay");
+const modeBtn = document.getElementById("modeBtn"); // WICHTIG!
+
 const undoBtn = document.getElementById("undoBtn");
 const tutorialOverlay = document.getElementById("tutorial-overlay");
 const startBtn = document.getElementById("startBtn");
 const backBtn = document.getElementById("backBtn");
 const ratingBtns = document.querySelectorAll('.rating-btn'); 
 
-// --- Global State ---
+// --- State ---
 let markedImageIds = new Set();
 let currentIndex = 1;
 let drawingHistory = [];
-let hue = 0;
 let lastX = 0;
 let lastY = 0;
 let drawing = false;
 let brushSize = 12;
 let currentRating = null; 
+let isDrawingMode = true; // Startet im Mal-Modus
 
+// --- Init Logic ---
 if (backBtn) {
     backBtn.addEventListener('click', () => {
         window.location.href = 'index.html'; 
     });
 }
 
-if (viewportContainer && drawCanvas) {
+if (scrollContainer && drawCanvas) {
     const imgCtx = imageCanvas.getContext("2d");
     const drawCtx = drawCanvas.getContext("2d");
 
-    // --- Panzoom Setup ---
-    const panzoom = Panzoom(canvasWrapper, {
-        maxScale: 5,
-        minScale: 1,
-        contain: 'outside',
-        cursor: 'default',
-        noMouse: true, 
-        disablePan: true 
-    });
-
+    // Init Cursor
     drawCanvas.style.cursor = MARKER_CURSOR;
 
-    // --- Dynamic Gesture Handling ---
-    canvasWrapper.addEventListener('touchstart', (e) => {
-        if (e.touches.length > 1) {
-            panzoom.setOptions({ disablePan: false });
-        } else {
-            panzoom.setOptions({ disablePan: true });
+    // --- MODUS TOGGLE LOGIK ---
+    if (modeBtn) {
+        // Hilfsfunktion, um nur den Text im Button zu aktualisieren,
+        // ohne die CSS-Pseudo-Elemente (Emojis) zu entfernen.
+        function updateModeButtonText(text) {
+            // Löscht alle Kindknoten (auch den Text), falls vorhanden
+            modeBtn.innerHTML = '';
+            // Fügt nur den neuen Text-Knoten hinzu
+            modeBtn.appendChild(document.createTextNode(text));
         }
-    }, { passive: false });
+
+        modeBtn.addEventListener('click', () => {
+            isDrawingMode = !isDrawingMode;
+
+            if (isDrawingMode) {
+                // -> MALEN: Setzt den reinen Text "Bild verschieben"
+                updateModeButtonText("Bild zu verschieben");
+                modeBtn.classList.remove("mode-moving"); // Button Style reset
+                
+                // Entferne Klasse vom Wrapper -> CSS pointer-events: auto greift wieder
+                canvasWrapper.classList.remove("move-mode");
+                
+                drawCanvas.style.cursor = MARKER_CURSOR;
+            } else {
+                // -> BEWEGEN: Setzt den reinen Text "Weiter malen"
+                updateModeButtonText("Weiter zu malen");
+                modeBtn.classList.add("mode-moving"); 
+                
+                canvasWrapper.classList.add("move-mode");
+                
+                drawCanvas.style.cursor = "grab";
+            }
+        });
+    }
+
+    // --- ZOOM LOGIK ---
+    if (zoomInput) {
+        zoomInput.addEventListener('input', (e) => {
+            const zoomVal = e.target.value;
+            zoomDisplay.textContent = zoomVal + "%";
+            canvasWrapper.style.width = zoomVal + "%";
+            canvasWrapper.style.height = zoomVal + "%";
+        });
+    }
 
     // --- UI Helpers ---
     if (startBtn && tutorialOverlay) {
@@ -77,11 +110,7 @@ if (viewportContainer && drawCanvas) {
         });
     }
 
-    if (brushWidthInput && brushDisplay && brushValueSpan) {
-        brushWidthInput.value = brushSize;
-        brushDisplay.textContent = brushSize;
-        brushValueSpan.textContent = brushSize;
-
+    if (brushWidthInput) {
         brushWidthInput.addEventListener("input", (e) => {
             brushSize = parseInt(e.target.value);
             brushValueSpan.textContent = brushSize;
@@ -89,7 +118,6 @@ if (viewportContainer && drawCanvas) {
         });
     }
 
-    // --- Rating Logic ---
     ratingBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             currentRating = parseInt(btn.dataset.value);
@@ -98,7 +126,7 @@ if (viewportContainer && drawCanvas) {
         });
     });
 
-    // --- Drawing Logic ---
+    // --- Drawing ---
     function saveState() {
         drawingHistory.push(drawCtx.getImageData(0, 0, drawCanvas.width, drawCanvas.height));
     }
@@ -135,13 +163,17 @@ if (viewportContainer && drawCanvas) {
 
         lastX = x;
         lastY = y;
-        hue = (hue + 1) % 360;
     }
 
-    // --- Event Listeners ---
+    // --- Events ---
     drawCanvas.addEventListener("pointerdown", (e) => {
+        // WICHTIG: Wenn wir im Move-Modus sind, sollte das CSS (pointer-events: none)
+        // verhindern, dass wir hier überhaupt landen. Falls doch -> Abbrechen.
+        if (!isDrawingMode) return; 
+
         if (!e.isPrimary && e.pointerType === 'touch') return;
-        e.preventDefault(); 
+        
+        e.preventDefault();
         
         drawing = true;
         saveState();
@@ -158,18 +190,10 @@ if (viewportContainer && drawCanvas) {
         draw(e);
     });
 
-    drawCanvas.addEventListener('touchstart', (e) => {
-        if (e.touches.length > 1) {
-            drawing = false;
-            drawCtx.beginPath();
-        }
-    }, { passive: false });
-
     drawCanvas.addEventListener("pointerup", () => drawing = false);
     drawCanvas.addEventListener("pointercancel", () => drawing = false);
     drawCanvas.addEventListener("pointerout", () => drawing = false);
 
-    // --- Controls ---
     undoBtn.addEventListener("click", () => {
         if (drawingHistory.length > 0) {
             const lastState = drawingHistory.pop();
@@ -181,14 +205,13 @@ if (viewportContainer && drawCanvas) {
 
     submitBtn.addEventListener("click", saveAnnotation);
 
-    // --- Database & Storage ---
+    // --- Data ---
     function getUserId() {
         let userId = localStorage.getItem('anon_user_id');
         if (!userId) {
             userId = crypto.randomUUID();
             localStorage.setItem('anon_user_id', userId);
         }
-        console.log(`[TEST] Current User ID: ${userId}`); // OUTPUT
         return userId;
     }
     const ANONYMOUS_USER_ID = getUserId();
@@ -209,72 +232,45 @@ if (viewportContainer && drawCanvas) {
     }
 
     function getNextRandomIndex() {
-        // 1. Pool A: Suche alle unmarkierten Bilder im Bereich 1 bis 100
         const poolA = [];
         for (let i = 1; i <= 100; i++) {
-            if (!markedImageIds.has(formatImageName(i))) {
-                poolA.push(i);
-            }
+            if (!markedImageIds.has(formatImageName(i))) poolA.push(i);
         }
+        if (poolA.length > 0) return poolA[Math.floor(Math.random() * poolA.length)];
 
-        console.log(`[TEST] Pool A (1-100) noch verfügbar: ${poolA.length} Bilder.`); // OUTPUT
-
-        if (poolA.length > 0) {
-            const randomIndex = Math.floor(Math.random() * poolA.length);
-            const selected = poolA[randomIndex];
-            console.log(`[TEST] Zufällig gewählt aus Pool A: Index ${selected}`); // OUTPUT
-            return selected;
-        }
-
-        // 2. Pool B: Sequenziell ab 101
         let j = 101;
         while (j <= MAX_IMAGE_COUNT) {
-            if (!markedImageIds.has(formatImageName(j))) {
-                console.log(`[TEST] Pool A leer. Wähle nächstes aus Pool B (ab 101): Index ${j}`); // OUTPUT
-                return j;
-            }
+            if (!markedImageIds.has(formatImageName(j))) return j;
             j++;
         }
-        console.log(`[TEST] Keine Bilder mehr verfügbar!`); // OUTPUT
         return null; 
     }
 
     async function getMarkedImages() {
-        console.log(`[TEST] Lade bereits markierte Bilder aus DB...`); // OUTPUT
         const { data, error } = await supabase
             .from("annotations")
             .select("image_id")
             .eq("user_id", ANONYMOUS_USER_ID);
 
-        if (!error) {
-            markedImageIds = new Set(data.map(r => r.image_id));
-            console.log(`[TEST] ${markedImageIds.size} Bilder bereits von diesem User markiert.`); // OUTPUT
-        } else {
-            console.error(`[TEST] Fehler beim Laden der Markierungen:`, error);
-        }
+        if (!error) markedImageIds = new Set(data.map(r => r.image_id));
     }
 
     async function loadImage() {
         if (!currentIndex) {
-            viewportContainer.innerHTML = "<div style='padding:20px; text-align:center;'><h2>Danke! Du hast alle Bilder angesehen.</h2></div>";
+            scrollContainer.innerHTML = "<div style='padding:20px; text-align:center;'><h2>Danke! Du hast alle Bilder angesehen.</h2></div>";
             submitBtn.disabled = true;
             return;
         }
 
         const fileName = formatImageName(currentIndex);
-        const isMarked = markedImageIds.has(fileName);
-        
-        console.log(`%c[TEST] Lade Bild: ${fileName} (Index: ${currentIndex})`, "color: green; font-weight: bold;"); // OUTPUT
-        console.log(`[TEST] Status: ${isMarked ? "BEREITS MARKIERT (Fehler!)" : "Noch nicht markiert (Korrekt)"}`); // OUTPUT
-
         const { data } = supabase.storage.from(BUCKET_IMAGES).getPublicUrl(fileName);
         const url = data?.publicUrl;
 
         const img = new Image();
         img.src = url;
         img.onload = () => {
-            const maxWidth = viewportContainer.clientWidth;
-            const maxHeight = viewportContainer.clientHeight;
+            const maxWidth = scrollContainer.clientWidth;
+            const maxHeight = scrollContainer.clientHeight;
             const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
 
             imageCanvas.width = drawCanvas.width = img.width * scale;
@@ -284,12 +280,31 @@ if (viewportContainer && drawCanvas) {
             imgCtx.drawImage(img, 0, 0, imageCanvas.width, imageCanvas.height);
             drawingHistory = [];
             
-            panzoom.reset();
+            // Reset UI
+            if (zoomInput) {
+                zoomInput.value = 100;
+                zoomDisplay.textContent = "100%";
+                canvasWrapper.style.width = "100%";
+                canvasWrapper.style.height = "100%";
+            }
+            
+            // Reset Mode
+            isDrawingMode = true;
+            if(modeBtn) {
+                // Fügt den reinen Text "Bild verschieben" hinzu
+                modeBtn.innerHTML = ''; 
+                modeBtn.appendChild(document.createTextNode("Bild zu verschieben"));
+                
+                modeBtn.classList.remove("mode-moving");
+            }
+            canvasWrapper.classList.remove("move-mode");
+            drawCanvas.style.cursor = MARKER_CURSOR;
+            
+            // Reset Rating
+            currentRating = null;
+            ratingBtns.forEach(b => b.classList.remove('selected'));
         };
         commentField.value = "";
-        
-        currentRating = null;
-        ratingBtns.forEach(b => b.classList.remove('selected'));
     }
 
     async function saveAnnotation() {
@@ -321,18 +336,12 @@ if (viewportContainer && drawCanvas) {
             });
             if (dbError) throw dbError;
 
-            console.log(`[TEST] Bild ${fileName} erfolgreich gespeichert!`); // OUTPUT
             markedImageIds.add(fileName);
-            
             drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
             commentField.value = "";
             document.querySelectorAll('input[name="issues"]').forEach(cb => cb.checked = false);
             
-            currentRating = null;
-            ratingBtns.forEach(b => b.classList.remove('selected'));
-
             currentIndex = getNextRandomIndex();
-            
             loadImage();
         } catch (err) {
             console.error(err);
