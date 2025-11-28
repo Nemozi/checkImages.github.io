@@ -574,3 +574,49 @@ textarea:focus {
      max-width: 85vh;
   }
 }
+/* Überzeugungsskala */
+.rating-container {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr); 
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.rating-btn {
+  background: transparent;
+  border: 1px solid var(--text-main);
+  padding: 10px 0;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.1s;
+  border-radius: 0;
+}
+
+.rating-btn:hover {
+  background: #eee;
+}
+
+.rating-btn.selected {
+  background: var(--text-main);
+  color: #fff;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+  transform: translate(-1px, -1px);
+}
+
+.rating-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  margin-top: 5px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+@media (max-width: 400px) {
+  .rating-container {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 5px;
+  }
+}

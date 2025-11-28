@@ -26,6 +26,7 @@ const undoBtn = document.getElementById("undoBtn");
 const tutorialOverlay = document.getElementById("tutorial-overlay");
 const startBtn = document.getElementById("startBtn");
 const backBtn = document.getElementById("backBtn");
+const ratingBtns = document.querySelectorAll('.rating-btn'); 
 
 // --- Global State ---
 let markedImageIds = new Set();
@@ -36,6 +37,7 @@ let lastX = 0;
 let lastY = 0;
 let drawing = false;
 let brushSize = 12;
+let currentRating = null; 
 
 if (backBtn) {
     backBtn.addEventListener('click', () => {
@@ -54,13 +56,12 @@ if (viewportContainer && drawCanvas) {
         contain: 'outside',
         cursor: 'default',
         noMouse: true, 
-        disablePan: true // Start disabled to prioritize drawing
+        disablePan: true 
     });
 
     drawCanvas.style.cursor = MARKER_CURSOR;
 
     // --- Dynamic Gesture Handling ---
-    // Toggle between Pan (2 fingers) and Draw (1 finger)
     canvasWrapper.addEventListener('touchstart', (e) => {
         if (e.touches.length > 1) {
             panzoom.setOptions({ disablePan: false });
@@ -87,6 +88,15 @@ if (viewportContainer && drawCanvas) {
             brushDisplay.textContent = brushSize;
         });
     }
+
+    // --- Rating Logic ---
+    ratingBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentRating = parseInt(btn.dataset.value);
+            ratingBtns.forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        });
+    });
 
     // --- Drawing Logic ---
     function saveState() {
@@ -130,9 +140,7 @@ if (viewportContainer && drawCanvas) {
 
     // --- Event Listeners ---
     drawCanvas.addEventListener("pointerdown", (e) => {
-        // Ignore secondary pointers (multi-touch start)
         if (!e.isPrimary && e.pointerType === 'touch') return;
-
         e.preventDefault(); 
         
         drawing = true;
@@ -152,7 +160,6 @@ if (viewportContainer && drawCanvas) {
 
     drawCanvas.addEventListener('touchstart', (e) => {
         if (e.touches.length > 1) {
-            // Stop drawing immediately if 2nd finger appears
             drawing = false;
             drawCtx.beginPath();
         }
@@ -181,6 +188,7 @@ if (viewportContainer && drawCanvas) {
             userId = crypto.randomUUID();
             localStorage.setItem('anon_user_id', userId);
         }
+        console.log(`[TEST] Current User ID: ${userId}`); // OUTPUT
         return userId;
     }
     const ANONYMOUS_USER_ID = getUserId();
@@ -200,35 +208,67 @@ if (viewportContainer && drawCanvas) {
         return merged.toDataURL("image/png");
     }
 
-    function findNextUnmarkedIndex(startFrom = 1, maxLimit = MAX_IMAGE_COUNT) {
-        let index = startFrom;
-        const top = Math.min(maxLimit, MAX_IMAGE_COUNT);
-        while (index <= top) {
-            if (!markedImageIds.has(formatImageName(index))) return index;
-            index++;
+    function getNextRandomIndex() {
+        // 1. Pool A: Suche alle unmarkierten Bilder im Bereich 1 bis 100
+        const poolA = [];
+        for (let i = 1; i <= 100; i++) {
+            if (!markedImageIds.has(formatImageName(i))) {
+                poolA.push(i);
+            }
         }
-        return top + 1;
+
+        console.log(`[TEST] Pool A (1-100) noch verfügbar: ${poolA.length} Bilder.`); // OUTPUT
+
+        if (poolA.length > 0) {
+            const randomIndex = Math.floor(Math.random() * poolA.length);
+            const selected = poolA[randomIndex];
+            console.log(`[TEST] Zufällig gewählt aus Pool A: Index ${selected}`); // OUTPUT
+            return selected;
+        }
+
+        // 2. Pool B: Sequenziell ab 101
+        let j = 101;
+        while (j <= MAX_IMAGE_COUNT) {
+            if (!markedImageIds.has(formatImageName(j))) {
+                console.log(`[TEST] Pool A leer. Wähle nächstes aus Pool B (ab 101): Index ${j}`); // OUTPUT
+                return j;
+            }
+            j++;
+        }
+        console.log(`[TEST] Keine Bilder mehr verfügbar!`); // OUTPUT
+        return null; 
     }
 
     async function getMarkedImages() {
+        console.log(`[TEST] Lade bereits markierte Bilder aus DB...`); // OUTPUT
         const { data, error } = await supabase
             .from("annotations")
             .select("image_id")
             .eq("user_id", ANONYMOUS_USER_ID);
 
-        if (!error) markedImageIds = new Set(data.map(r => r.image_id));
+        if (!error) {
+            markedImageIds = new Set(data.map(r => r.image_id));
+            console.log(`[TEST] ${markedImageIds.size} Bilder bereits von diesem User markiert.`); // OUTPUT
+        } else {
+            console.error(`[TEST] Fehler beim Laden der Markierungen:`, error);
+        }
     }
 
     async function loadImage() {
-        const fileName = formatImageName(currentIndex);
-        const { data } = supabase.storage.from(BUCKET_IMAGES).getPublicUrl(fileName);
-        const url = data?.publicUrl;
-
-        if (!url || currentIndex > MAX_IMAGE_COUNT) {
+        if (!currentIndex) {
             viewportContainer.innerHTML = "<div style='padding:20px; text-align:center;'><h2>Danke! Du hast alle Bilder angesehen.</h2></div>";
             submitBtn.disabled = true;
             return;
         }
+
+        const fileName = formatImageName(currentIndex);
+        const isMarked = markedImageIds.has(fileName);
+        
+        console.log(`%c[TEST] Lade Bild: ${fileName} (Index: ${currentIndex})`, "color: green; font-weight: bold;"); // OUTPUT
+        console.log(`[TEST] Status: ${isMarked ? "BEREITS MARKIERT (Fehler!)" : "Noch nicht markiert (Korrekt)"}`); // OUTPUT
+
+        const { data } = supabase.storage.from(BUCKET_IMAGES).getPublicUrl(fileName);
+        const url = data?.publicUrl;
 
         const img = new Image();
         img.src = url;
@@ -247,6 +287,9 @@ if (viewportContainer && drawCanvas) {
             panzoom.reset();
         };
         commentField.value = "";
+        
+        currentRating = null;
+        ratingBtns.forEach(b => b.classList.remove('selected'));
     }
 
     async function saveAnnotation() {
@@ -273,16 +316,23 @@ if (viewportContainer && drawCanvas) {
                 mask_url: maskFileName,
                 comment: commentField.value,
                 tags: selectedTags,
+                rating: currentRating, 
                 created_at: new Date()
             });
             if (dbError) throw dbError;
 
+            console.log(`[TEST] Bild ${fileName} erfolgreich gespeichert!`); // OUTPUT
             markedImageIds.add(fileName);
+            
             drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
             commentField.value = "";
             document.querySelectorAll('input[name="issues"]').forEach(cb => cb.checked = false);
+            
+            currentRating = null;
+            ratingBtns.forEach(b => b.classList.remove('selected'));
 
-            currentIndex = findNextUnmarkedIndex(currentIndex + 1);
+            currentIndex = getNextRandomIndex();
+            
             loadImage();
         } catch (err) {
             console.error(err);
@@ -295,9 +345,7 @@ if (viewportContainer && drawCanvas) {
 
     async function startApp() {
         await getMarkedImages();
-        const randomStart = Math.floor(Math.random() * 100) + 1;
-        currentIndex = findNextUnmarkedIndex(randomStart);
-        if (currentIndex > MAX_IMAGE_COUNT) currentIndex = findNextUnmarkedIndex(1, randomStart - 1);
+        currentIndex = getNextRandomIndex();
         loadImage();
     }
     
