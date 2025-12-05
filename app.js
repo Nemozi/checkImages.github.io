@@ -1,4 +1,4 @@
-// --- FIX: Wir nutzen eine feste, stabile Version (2.39.7), damit der AuthClient-Fehler verschwindet ---
+// --- FIX 1: Stabile Supabase Version importieren ---
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/+esm'
 
 // --- Config ---
@@ -6,11 +6,15 @@ const SUPABASE_URL = "https://ehkdthdgpqpcxllpslqe.supabase.co"
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVoa2R0aGRncHFwY3hsbHBzbHFlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM3Mzg0MzksImV4cCI6MjA3OTMxNDQzOX0.GgaILPJ9JcGWBHBG_t9gU40YIc3EEaEpuFrvQzxKzc4"
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
+// --- FIX 2: Neue Tabelle für die neuen Daten ---
+const TABLE_NAME = "annotations_duplicate"; 
+
+// ACHTUNG: Prüfe in Supabase ob der Bucket "Masks" oder "masks" heißt!
 const BUCKET_IMAGES = "Images"
-const BUCKET_MASKS = "Masks"
+const BUCKET_MASKS = "Masks-best" 
+
 const MAX_IMAGE_COUNT = 10000;
 const MARKER_ALPHA = 0.5;
-// Dein Cursor
 const MARKER_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' height='24' width='24' viewBox='0 0 24 24'><path fill='%23edc531' stroke='%23000' stroke-width='1' d='M17.41 4.59c-.78-.78-2.05-.78-2.83 0L7 12.17V17h4.83l7.59-7.59c.78-.78.78-2.05 0-2.83L17.41 4.59z'/></svg>") 3 17, crosshair`;
 
 // --- DOM Elements ---
@@ -47,7 +51,6 @@ let currentRating = null;
 let isDrawingMode = true; 
 
 // --- Init Logic ---
-
 // Funktioniert auf about.html und index.html
 if (backBtn) {
     backBtn.addEventListener('click', () => {
@@ -55,7 +58,7 @@ if (backBtn) {
     });
 }
 
-// Der Rest läuft NUR, wenn wir auf der Hauptseite sind (wo drawCanvas existiert)
+// Der Rest läuft NUR, wenn wir auf der Hauptseite sind
 if (drawCanvas && imageCanvas) {
     const imgCtx = imageCanvas.getContext("2d");
     const drawCtx = drawCanvas.getContext("2d");
@@ -226,17 +229,15 @@ if (drawCanvas && imageCanvas) {
         return merged.toDataURL("image/png");
     }
 
-    // --- ZUFALLS-LOGIK (angepasst für Image_0000) ---
+    // --- FIX 3: Start bei 0 für Image_0000 ---
     function getNextRandomIndex() {
         const poolA = [];
-        // Start bei 0, damit Image_0000.jpg gefunden wird!
-        for (let i = 0; i <= 100; i++) { 
+        for (let i = 0; i <= 40; i++) { 
             if (!markedImageIds.has(formatImageName(i))) poolA.push(i);
         }
         
         if (poolA.length > 0) return poolA[Math.floor(Math.random() * poolA.length)];
 
-        // Fallback für Bilder > 40
         let j = 41;
         while (j <= MAX_IMAGE_COUNT) {
             if (!markedImageIds.has(formatImageName(j))) return j;
@@ -246,8 +247,9 @@ if (drawCanvas && imageCanvas) {
     }
 
     async function getMarkedImages() {
+        // --- FIX 4: Neue Tabelle nutzen ---
         const { data, error } = await supabase
-            .from("annotations")
+            .from(TABLE_NAME)
             .select("image_id")
             .eq("user_id", ANONYMOUS_USER_ID);
 
@@ -270,7 +272,6 @@ if (drawCanvas && imageCanvas) {
         img.onload = () => {
             const maxWidth = scrollContainer.clientWidth;
             const maxHeight = scrollContainer.clientHeight;
-            // Einfache Skalierung:
             const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
 
             imageCanvas.width = drawCanvas.width = img.width * scale;
@@ -280,7 +281,6 @@ if (drawCanvas && imageCanvas) {
             imgCtx.drawImage(img, 0, 0, imageCanvas.width, imageCanvas.height);
             drawingHistory = [];
             
-            // Reset UI
             if (zoomInput) {
                 zoomInput.value = 100;
                 if(zoomDisplay) zoomDisplay.textContent = "100%";
@@ -288,7 +288,6 @@ if (drawCanvas && imageCanvas) {
                 canvasWrapper.style.height = "100%";
             }
             
-            // Reset Mode
             isDrawingMode = true;
             if(modeBtn) {
                 modeBtn.innerHTML = ''; 
@@ -298,7 +297,6 @@ if (drawCanvas && imageCanvas) {
             canvasWrapper.classList.remove("move-mode");
             drawCanvas.style.cursor = MARKER_CURSOR;
             
-            // Reset Rating
             currentRating = null;
             ratingBtns.forEach(b => b.classList.remove('selected'));
         };
@@ -317,16 +315,18 @@ if (drawCanvas && imageCanvas) {
             const blob = await (await fetch(maskUrl)).blob();
 
             const userCode = ANONYMOUS_USER_ID.substring(0, 8);
-            const maskFileName = `Mask_${String(currentIndex).padStart(4, '0')}_${userCode}_${Date.now()}.png`;
+            
+            // --- FIX 5: V2 Name für Masken ---
+            const maskFileName = `MaskV2_${String(currentIndex).padStart(4, '0')}_${userCode}_${Date.now()}.png`;
 
             const { error: uploadError } = await supabase.storage.from(BUCKET_MASKS).upload(maskFileName, blob);
             if (uploadError) throw uploadError;
 
-            // Falls du Checkboxen hast, sonst leer lassen
             const checkboxes = document.querySelectorAll('input[name="issues"]:checked');
             const selectedTags = Array.from(checkboxes).map(cb => cb.value);
 
-            const { error: dbError } = await supabase.from("annotations").insert({
+            // --- FIX 6: Neue Tabelle für Insert nutzen ---
+            const { error: dbError } = await supabase.from(TABLE_NAME).insert({
                 image_id: fileName,
                 user_id: ANONYMOUS_USER_ID,
                 mask_url: maskFileName,
