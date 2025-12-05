@@ -1,4 +1,5 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+// --- FIX: Wir nutzen eine feste, stabile Version (2.39.7), damit der AuthClient-Fehler verschwindet ---
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/+esm'
 
 // --- Config ---
 const SUPABASE_URL = "https://ehkdthdgpqpcxllpslqe.supabase.co"
@@ -9,6 +10,7 @@ const BUCKET_IMAGES = "Images"
 const BUCKET_MASKS = "Masks"
 const MAX_IMAGE_COUNT = 10000;
 const MARKER_ALPHA = 0.5;
+// Dein Cursor
 const MARKER_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' height='24' width='24' viewBox='0 0 24 24'><path fill='%23edc531' stroke='%23000' stroke-width='1' d='M17.41 4.59c-.78-.78-2.05-.78-2.83 0L7 12.17V17h4.83l7.59-7.59c.78-.78.78-2.05 0-2.83L17.41 4.59z'/></svg>") 3 17, crosshair`;
 
 // --- DOM Elements ---
@@ -25,7 +27,7 @@ const brushValueSpan = document.getElementById("brushValue");
 const brushDisplay = document.getElementById("brushValueDisplay");
 const zoomInput = document.getElementById("zoomLevel");
 const zoomDisplay = document.getElementById("zoomValueDisplay");
-const modeBtn = document.getElementById("modeBtn"); // WICHTIG!
+const modeBtn = document.getElementById("modeBtn"); 
 
 const undoBtn = document.getElementById("undoBtn");
 const tutorialOverlay = document.getElementById("tutorial-overlay");
@@ -35,23 +37,26 @@ const ratingBtns = document.querySelectorAll('.rating-btn');
 
 // --- State ---
 let markedImageIds = new Set();
-let currentIndex = 1;
+let currentIndex = null;
 let drawingHistory = [];
 let lastX = 0;
 let lastY = 0;
 let drawing = false;
 let brushSize = 12;
 let currentRating = null; 
-let isDrawingMode = true; // Startet im Mal-Modus
+let isDrawingMode = true; 
 
 // --- Init Logic ---
+
+// Funktioniert auf about.html und index.html
 if (backBtn) {
     backBtn.addEventListener('click', () => {
         window.location.href = 'index.html'; 
     });
 }
 
-if (scrollContainer && drawCanvas) {
+// Der Rest läuft NUR, wenn wir auf der Hauptseite sind (wo drawCanvas existiert)
+if (drawCanvas && imageCanvas) {
     const imgCtx = imageCanvas.getContext("2d");
     const drawCtx = drawCanvas.getContext("2d");
 
@@ -60,12 +65,8 @@ if (scrollContainer && drawCanvas) {
 
     // --- MODUS TOGGLE LOGIK ---
     if (modeBtn) {
-        // Hilfsfunktion, um nur den Text im Button zu aktualisieren,
-        // ohne die CSS-Pseudo-Elemente (Emojis) zu entfernen.
         function updateModeButtonText(text) {
-            // Löscht alle Kindknoten (auch den Text), falls vorhanden
             modeBtn.innerHTML = '';
-            // Fügt nur den neuen Text-Knoten hinzu
             modeBtn.appendChild(document.createTextNode(text));
         }
 
@@ -73,31 +74,24 @@ if (scrollContainer && drawCanvas) {
             isDrawingMode = !isDrawingMode;
 
             if (isDrawingMode) {
-                // -> MALEN: Setzt den reinen Text "Bild verschieben"
                 updateModeButtonText("Bild zu verschieben");
-                modeBtn.classList.remove("mode-moving"); // Button Style reset
-                
-                // Entferne Klasse vom Wrapper -> CSS pointer-events: auto greift wieder
-                canvasWrapper.classList.remove("move-mode");
-                
+                modeBtn.classList.remove("mode-moving"); 
+                if(canvasWrapper) canvasWrapper.classList.remove("move-mode");
                 drawCanvas.style.cursor = MARKER_CURSOR;
             } else {
-                // -> BEWEGEN: Setzt den reinen Text "Weiter malen"
                 updateModeButtonText("Weiter zu malen");
                 modeBtn.classList.add("mode-moving"); 
-                
-                canvasWrapper.classList.add("move-mode");
-                
+                if(canvasWrapper) canvasWrapper.classList.add("move-mode");
                 drawCanvas.style.cursor = "grab";
             }
         });
     }
 
     // --- ZOOM LOGIK ---
-    if (zoomInput) {
+    if (zoomInput && canvasWrapper) {
         zoomInput.addEventListener('input', (e) => {
             const zoomVal = e.target.value;
-            zoomDisplay.textContent = zoomVal + "%";
+            if(zoomDisplay) zoomDisplay.textContent = zoomVal + "%";
             canvasWrapper.style.width = zoomVal + "%";
             canvasWrapper.style.height = zoomVal + "%";
         });
@@ -113,8 +107,8 @@ if (scrollContainer && drawCanvas) {
     if (brushWidthInput) {
         brushWidthInput.addEventListener("input", (e) => {
             brushSize = parseInt(e.target.value);
-            brushValueSpan.textContent = brushSize;
-            brushDisplay.textContent = brushSize;
+            if(brushValueSpan) brushValueSpan.textContent = brushSize;
+            if(brushDisplay) brushDisplay.textContent = brushSize;
         });
     }
 
@@ -167,10 +161,7 @@ if (scrollContainer && drawCanvas) {
 
     // --- Events ---
     drawCanvas.addEventListener("pointerdown", (e) => {
-        // WICHTIG: Wenn wir im Move-Modus sind, sollte das CSS (pointer-events: none)
-        // verhindern, dass wir hier überhaupt landen. Falls doch -> Abbrechen.
         if (!isDrawingMode) return; 
-
         if (!e.isPrimary && e.pointerType === 'touch') return;
         
         e.preventDefault();
@@ -194,16 +185,20 @@ if (scrollContainer && drawCanvas) {
     drawCanvas.addEventListener("pointercancel", () => drawing = false);
     drawCanvas.addEventListener("pointerout", () => drawing = false);
 
-    undoBtn.addEventListener("click", () => {
-        if (drawingHistory.length > 0) {
-            const lastState = drawingHistory.pop();
-            drawCtx.putImageData(lastState, 0, 0);
-        } else {
-            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-        }
-    });
+    if (undoBtn) {
+        undoBtn.addEventListener("click", () => {
+            if (drawingHistory.length > 0) {
+                const lastState = drawingHistory.pop();
+                drawCtx.putImageData(lastState, 0, 0);
+            } else {
+                drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            }
+        });
+    }
 
-    submitBtn.addEventListener("click", saveAnnotation);
+    if (submitBtn) {
+        submitBtn.addEventListener("click", saveAnnotation);
+    }
 
     // --- Data ---
     function getUserId() {
@@ -231,14 +226,18 @@ if (scrollContainer && drawCanvas) {
         return merged.toDataURL("image/png");
     }
 
+    // --- ZUFALLS-LOGIK (angepasst für Image_0000) ---
     function getNextRandomIndex() {
         const poolA = [];
-        for (let i = 1; i <= 100; i++) {
+        // Start bei 0, damit Image_0000.jpg gefunden wird!
+        for (let i = 0; i <= 100; i++) { 
             if (!markedImageIds.has(formatImageName(i))) poolA.push(i);
         }
+        
         if (poolA.length > 0) return poolA[Math.floor(Math.random() * poolA.length)];
 
-        let j = 101;
+        // Fallback für Bilder > 40
+        let j = 41;
         while (j <= MAX_IMAGE_COUNT) {
             if (!markedImageIds.has(formatImageName(j))) return j;
             j++;
@@ -256,9 +255,9 @@ if (scrollContainer && drawCanvas) {
     }
 
     async function loadImage() {
-        if (!currentIndex) {
-            scrollContainer.innerHTML = "<div style='padding:20px; text-align:center;'><h2>Danke! Du hast alle Bilder angesehen.</h2></div>";
-            submitBtn.disabled = true;
+        if (currentIndex === null) {
+            if(scrollContainer) scrollContainer.innerHTML = "<div style='padding:20px; text-align:center;'><h2>Danke! Du hast alle Bilder angesehen.</h2></div>";
+            if(submitBtn) submitBtn.disabled = true;
             return;
         }
 
@@ -271,6 +270,7 @@ if (scrollContainer && drawCanvas) {
         img.onload = () => {
             const maxWidth = scrollContainer.clientWidth;
             const maxHeight = scrollContainer.clientHeight;
+            // Einfache Skalierung:
             const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
 
             imageCanvas.width = drawCanvas.width = img.width * scale;
@@ -283,7 +283,7 @@ if (scrollContainer && drawCanvas) {
             // Reset UI
             if (zoomInput) {
                 zoomInput.value = 100;
-                zoomDisplay.textContent = "100%";
+                if(zoomDisplay) zoomDisplay.textContent = "100%";
                 canvasWrapper.style.width = "100%";
                 canvasWrapper.style.height = "100%";
             }
@@ -291,10 +291,8 @@ if (scrollContainer && drawCanvas) {
             // Reset Mode
             isDrawingMode = true;
             if(modeBtn) {
-                // Fügt den reinen Text "Bild verschieben" hinzu
                 modeBtn.innerHTML = ''; 
                 modeBtn.appendChild(document.createTextNode("Bild zu verschieben"));
-                
                 modeBtn.classList.remove("mode-moving");
             }
             canvasWrapper.classList.remove("move-mode");
@@ -304,12 +302,14 @@ if (scrollContainer && drawCanvas) {
             currentRating = null;
             ratingBtns.forEach(b => b.classList.remove('selected'));
         };
-        commentField.value = "";
+        if(commentField) commentField.value = "";
     }
 
     async function saveAnnotation() {
-        submitBtn.disabled = true;
-        submitBtn.textContent = "Wird gespeichert...";
+        if(submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Wird gespeichert...";
+        }
 
         try {
             const fileName = formatImageName(currentIndex);
@@ -322,6 +322,7 @@ if (scrollContainer && drawCanvas) {
             const { error: uploadError } = await supabase.storage.from(BUCKET_MASKS).upload(maskFileName, blob);
             if (uploadError) throw uploadError;
 
+            // Falls du Checkboxen hast, sonst leer lassen
             const checkboxes = document.querySelectorAll('input[name="issues"]:checked');
             const selectedTags = Array.from(checkboxes).map(cb => cb.value);
 
@@ -329,7 +330,7 @@ if (scrollContainer && drawCanvas) {
                 image_id: fileName,
                 user_id: ANONYMOUS_USER_ID,
                 mask_url: maskFileName,
-                comment: commentField.value,
+                comment: commentField ? commentField.value : "",
                 tags: selectedTags,
                 rating: currentRating, 
                 created_at: new Date()
@@ -338,17 +339,19 @@ if (scrollContainer && drawCanvas) {
 
             markedImageIds.add(fileName);
             drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-            commentField.value = "";
+            if(commentField) commentField.value = "";
             document.querySelectorAll('input[name="issues"]').forEach(cb => cb.checked = false);
             
             currentIndex = getNextRandomIndex();
             loadImage();
         } catch (err) {
             console.error(err);
-            alert("Fehler beim Speichern.");
+            alert("Fehler beim Speichern. Bitte versuche es erneut.");
         } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = "Absenden & Nächstes Bild";
+            if(submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Absenden & Nächstes Bild";
+            }
         }
     }
 
